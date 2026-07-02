@@ -39,4 +39,6 @@ Asegurate de que el entorno virtual esté activado, y luego:
 python "tarea_clase_01_07_detección_y_clasificación_de_monedas.py"
 ```
 
-> **Nota:** El script usa `matplotlib.pyplot.show()` para mostrar las imágenes, por lo que necesita un entorno gráfico (escritorio). Si estás en un entorno sin GUI (por ejemplo, un servidor), el script fallará al intentar mostrar ventanas.
+> **Nota:** El script usa `matplotlib.pyplot.show()` para mostrar las imágenes, por lo que necesita un entorno gráfico (escritorio). Si estás en un entorno sin GUI (por ejemplo, un servidor), el script fallará al intentar mostrar ventanas. Además, para ir avanzando en la ejecución,
+necesita que se presione una tecla (como ALT+F4) para cerrar cada ventana de imagen y continuar con la ejecución del script. El Google Colab
+original se encuentra aquí: [https://colab.research.google.com/drive/1588X8XZLJoP9lmQkQrvat3PvfkDPeplM#scrollTo=BRQgibBloEkb](https://colab.research.google.com/drive/1588X8XZLJoP9lmQkQrvat3PvfkDPeplM#scrollTo=BRQgibBloEkb)
