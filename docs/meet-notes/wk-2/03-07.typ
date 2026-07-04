@@ -169,7 +169,7 @@ siguen sus pasos, no habrá problema.
 Hay varios problemas en UART que
 van de acuerdo a las definiciones.
 
-= Ejercicio python
+= Ejercicio demo python
 
 Código Python:
 ```python
@@ -210,3 +210,14 @@ Output de la terminal de Arduino IDE V2
 Sketch uses 3508 bytes (1%) of program storage space. Maximum is 253952 bytes.
 Global variables use 216 bytes (2%) of dynamic memory, leaving 7976 bytes for local variables. Maximum is 8192 bytes.
 ```
+
+= Ejercicio 1
+
+`// codigo python`
+La idea es que hacer que, dependiendo del color reconocido,
+se encienda un LED.
+
+Consideraciones:
+- Nos va a mandar una imagen donde tiene el color respectivo,
+  dentro de un cuadro.
+
