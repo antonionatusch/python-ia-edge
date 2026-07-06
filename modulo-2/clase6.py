@@ -13,9 +13,18 @@ PUERTO_SERIAL = (
 )
 BAUDRATE = 9600  # default en la mayoría de las veces
 UMBRAL_NEGRO = 70
-AREA_MINIMA_CUADRADO = 4000
+AREA_MINIMA_CUADRO = 4000
+TAMANO_BUFFER = 8
 KERNEL_MORFOLOGICO = np.ones((5, 5), np.uint8)
 
+COLOR_BGR = {"R": (0, 0, 255), "G": (0, 255, 0), "B": (255, 0, 0), "N": (200, 200, 200)}
+
+TEXTO_COLOR = {"R": "ROJO", "G": "VERDE", "B": "AZUL", "N": "NINGUNO"}
+
+RANGO_ROJO_1 = ((0, 100, 70), (10, 255, 255))
+RANGO_ROJO_2 = ((170, 100, 70), (180, 255, 255))
+RANGO_VERDE = ((40, 70, 60), (85, 255, 255))
+RANGO_AZUL = ((90, 50, 40), (135, 255, 255))
 
 arduino = serial.Serial(
     PUERTO_SERIAL, BAUDRATE, timeout=1
@@ -23,6 +32,11 @@ arduino = serial.Serial(
 time.sleep(2)
 
 camara = cv2.VideoCapture(0)  # solo tengo una cam, así que ponemos índice 0
+buffer_colores = []
+buffer_fps = []
+TAMANO_BUFFER_FPS = 15
+ultimo_color_enviado = None
+tiempo_anterior = time.time()
 
 while True:
 
@@ -41,7 +55,7 @@ while True:
     if jerarquia is not None:
         for i, contorno in enumerate(contornos):
             area = cv2.contourArea(contorno)
-            if area < AREA_MINIMA_CUADRADO:
+            if area < AREA_MINIMA_CUADRO:
                 continue
 
             perimetro = cv2.arcLength(contorno, True)
@@ -73,22 +87,12 @@ while True:
     # -1 es para graficar todos los contornos, lo marco de verde
     # la tupla es orden BGR
     # el 2 indica el ancho de la linea para el contorno
+
+    color_detectado = "N"
+
     if resultado is not None:
         cuadrado_encontrado, interior_encontrado = resultado
         cv2.drawContours(frame, [cuadrado_encontrado], -1, (0, 255, 0), 2)
-        # cuadro,
-        # texto a poner, posicion, fuente de texto, grosor, tupla bgr, etc.
-        """
-        cv2.putText(
-            frame,
-            "Cuadrado detectado",
-            (10, 30),
-            cv2.FONT_HERSHEY_COMPLEX,
-            0.8,
-            (0, 255, 0),
-            2,
-        )
-        """
 
         x, y, w, h = cv2.boundingRect(interior_encontrado)
         roi = frame[y : y + h, x : x + w]
@@ -98,7 +102,7 @@ while True:
 
             mascara_color = cv2.inRange(hsv, (0, 80, 40), (180, 255, 255))
 
-            # para eliminar ruido de sal y pimiento, se hace open y close
+            # para eliminar ruido de sal y pimienta, se hace open y close
             mascara_color = cv2.morphologyEx(
                 mascara_color, cv2.MORPH_OPEN, KERNEL_MORFOLOGICO
             )
@@ -133,10 +137,110 @@ while True:
                     mejor_circulo = contorno
 
                 if mejor_circulo is not None and mejor_circularidad > 0.7:
-                    cv2.drawContours(roi, [mejor_circulo], -1, (0, 0, 255), 2)
+                    mascara_circulo = np.zeros(hsv.shape[:2], dtype=np.uint8)
+                    cv2.drawContours(mascara_circulo, [mejor_circulo], -1, 255, -1)
+
+                    mascara_r_c = cv2.bitwise_and(
+                        cv2.inRange(hsv, RANGO_ROJO_1[0], RANGO_ROJO_1[1])
+                        | cv2.inRange(hsv, RANGO_ROJO_2[0], RANGO_ROJO_2[1]),
+                        mascara_circulo,
+                    )
+                    mascara_g_c = cv2.bitwise_and(
+                        cv2.inRange(hsv, RANGO_VERDE[0], RANGO_VERDE[1]),
+                        mascara_circulo,
+                    )
+                    mascara_b_c = cv2.bitwise_and(
+                        cv2.inRange(hsv, RANGO_AZUL[0], RANGO_AZUL[1]), mascara_circulo
+                    )
+
+                    conteos = {
+                        "R": cv2.countNonZero(mascara_r_c),
+                        "G": cv2.countNonZero(mascara_g_c),
+                        "B": cv2.countNonZero(mascara_b_c),
+                    }
+                    color_ganador, conteo_ganador = max(
+                        conteos.items(), key=lambda kv: kv[1]
+                    )
+                    area_circulo = cv2.countNonZero(mascara_circulo)
+
+                    if area_circulo > 0 and conteo_ganador > 0.3 * area_circulo:
+                        color_detectado = color_ganador
 
                 cv2.imshow("ROI", roi)
                 cv2.imshow("Mascara color", mascara_color)
+
+    buffer_colores.append(color_detectado)
+    if len(buffer_colores) > TAMANO_BUFFER:
+        buffer_colores.pop(0)
+
+    color_estable = max(set(buffer_colores), key=buffer_colores.count)
+
+    if color_estable != ultimo_color_enviado:
+        ultimo_color_enviado = color_estable
+        arduino.write((color_estable + "\n").encode())
+        print(f"Color enviado: {color_estable}")
+
+    tiempo_actual = time.time()
+    fps_instantaneo = 1.0 / max(tiempo_actual - tiempo_anterior, 1e-6)
+    tiempo_anterior = tiempo_actual
+
+    buffer_fps.append(fps_instantaneo)
+    if len(buffer_fps) > TAMANO_BUFFER_FPS:
+        buffer_fps.pop(0)
+    fps = sum(buffer_fps) / len(buffer_fps)
+
+    cv2.putText(
+        frame,
+        f"Color: {TEXTO_COLOR[color_estable]}",
+        (10, 30),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        COLOR_BGR[color_estable],
+        2,
+    )
+    cv2.putText(
+        frame,
+        f"Enviado por serial: {color_estable}",
+        (10, 60),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.7,
+        COLOR_BGR[color_estable],
+        2,
+    )
+    cv2.putText(
+        frame,
+        f"FPS: {fps:.1f}",
+        (10, 90),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.7,
+        (255, 255, 255),
+        2,
+    )
+
+    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    mascara_r = cv2.inRange(hsv_frame, RANGO_ROJO_1[0], RANGO_ROJO_1[1]) | cv2.inRange(
+        hsv_frame, RANGO_ROJO_2[0], RANGO_ROJO_2[1]
+    )
+    mascara_g = cv2.inRange(hsv_frame, RANGO_VERDE[0], RANGO_VERDE[1])
+    mascara_b = cv2.inRange(hsv_frame, RANGO_AZUL[0], RANGO_AZUL[1])
+
+    mascara_r = cv2.morphologyEx(mascara_r, cv2.MORPH_OPEN, KERNEL_MORFOLOGICO)
+    mascara_g = cv2.morphologyEx(mascara_g, cv2.MORPH_OPEN, KERNEL_MORFOLOGICO)
+    mascara_b = cv2.morphologyEx(mascara_b, cv2.MORPH_OPEN, KERNEL_MORFOLOGICO)
+
+    salida_r = np.zeros_like(frame)
+    salida_r[:, :, 2] = mascara_r
+
+    salida_g = np.zeros_like(frame)
+    salida_g[:, :, 1] = mascara_g
+
+    salida_b = np.zeros_like(frame)
+    salida_b[:, :, 0] = mascara_b
+
+    cv2.imshow("Mascara ROJO", salida_r)
+    cv2.imshow("Mascara VERDE", salida_g)
+    cv2.imshow("Mascara AZUL", salida_b)
 
     cv2.imshow("Camara", frame)  # NO PONER TILDES EN LA CAM
     cv2.imshow("Binarizacion", binaria)  # NO PONER TILDES EN LA CAM
@@ -151,3 +255,4 @@ while True:
 
 camara.release()
 cv2.destroyAllWindows()
+arduino.close()
