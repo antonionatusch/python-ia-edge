@@ -213,11 +213,63 @@ Global variables use 216 bytes (2%) of dynamic memory, leaving 7976 bytes for lo
 
 = Ejercicio 1
 
-`// codigo python`
-La idea es que hacer que, dependiendo del color reconocido,
+La idea es que hacer que,
+dependiendo del color reconocido (Rojo, Verde o Azul),
 se encienda un LED.
 
 Consideraciones:
 - Nos va a mandar una imagen donde tiene el color respectivo,
   dentro de un cuadro.
 
+= Resolución Ejercicio 1
+== Código Python
+
+
+#let python-code = read("../../../modulo-2/clase6.py")
+
+#raw(python-code, lang: "python", block: true)
+
+== Código Arduino
+
+```cpp
+const int PIN_LED_R = 10;
+const int PIN_LED_G = 9;
+const int PIN_LED_B = 8;
+
+void apagarTodos() {
+  digitalWrite(PIN_LED_R, LOW);
+  digitalWrite(PIN_LED_G, LOW);
+  digitalWrite(PIN_LED_B, LOW);
+}
+
+void setup() {
+  pinMode(PIN_LED_R, OUTPUT);
+  pinMode(PIN_LED_G, OUTPUT);
+  pinMode(PIN_LED_B, OUTPUT);
+  apagarTodos();
+
+  Serial.begin(9600);
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String comando = Serial.readStringUntil('\n');
+    comando.trim();
+
+    if (comando == "R") {
+      apagarTodos();
+      digitalWrite(PIN_LED_R, HIGH);
+    } else if (comando == "G") {
+      apagarTodos();
+      digitalWrite(PIN_LED_G, HIGH);
+    } else if (comando == "B") {
+      apagarTodos();
+      digitalWrite(PIN_LED_B, HIGH);
+    } else if (comando == "N") {
+      apagarTodos();
+    }
+  }
+}
+```
+
+Esto fue probado con un Arduino MEGA y sus puertos.

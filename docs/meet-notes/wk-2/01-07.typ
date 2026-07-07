@@ -25,75 +25,6 @@
   = 07/01/2026
 ]
 
-```md
-Todavía no servía el parser de Typst de Treesitter por una cuestión de
-comptabilidad; revisar:
-The lack of syntax highlighting in Neovim 0.12 is caused by a massive architectural change: Neovim 0.12 now includes built-in native Tree-sitter highlighting by default. This update introduces breaking changes that conflict with older configurations and the deprecated master branch of the nvim-treesitter plugin. [1, 2, 3, 4]
-To fix your syntax coloring, apply the following steps.
-## 1. Track the main Branch (Crucial)
-The old master branch of nvim-treesitter is frozen and incompatible with Neovim 0.12, causing severe errors like attempt to call method 'range' (a nil value). You must change your plugin manager configuration to track the main branch. [1, 5, 6]
-
-* Lazy.nvim:
-
-{
-  "nvim-treesitter/nvim-treesitter",
-  branch = "main", -- Explicitly add this line
-  build = ":TSUpdate",
-}
-
-* Vim.pack (Native):
-
-vim.pack.add({ { src = "https://github.com/nvim-treesitter/nvim-treesitter", version = 'main' } })
-
-[6, 7, 8, 9]
-
-## 2. Remove the Deprecated Setup Function
-The traditional .setup() block using configs will break completely on Neovim 0.12. [10]
-
-* Delete or comment out this old block entirely:
-
--- DELETE THIS:-- require('nvim-treesitter.configs').setup({--   highlight = { enable = true },-- })
-
-* Use the new initialization syntax instead (if you still need configuration parameters):
-
-require('nvim-treesitter').setup({
-  -- your new configuration options here
-})
-
-[10, 11]
-
-## 3. Install the Tree-sitter CLI
-Neovim 0.12 and the updated plugin require the tree-sitter command-line tool on your system path to successfully compile and install new language grammars. [5, 6]
-
-* macOS: brew install tree-sitter-cli
-* Arch Linux: sudo pacman -S tree-sitter-cli
-* Ubuntu/Debian: sudo apt install nodejs (or grab the pre-compiled binary via cargo install tree-sitter-cli) [5, 6]
-
-## 4. Clear and Reinstall Parsers
-Conflicting cache fragments from older Neovim versions frequently corrupt highlighting. Wipe and force-reinstall your language parsers: [6]
-
-   1. Close Neovim.
-   2. Run :TSUninstall all (if you can open it) or manually delete your old parsers directory (~/.local/share/nvim/lazy/nvim-treesitter/parser/ or similar).
-   3. Open Neovim and run :TSUpdate to cleanly compile the 0.12-compatible grammars. [6, 12, 13, 14]
-
-If you run into any specific terminal errors while applying this migration, let me know what plugin manager you use or paste the exact error message text so I can pinpoint the line causing the failure!
-
-[1] [https://www.reddit.com](https://www.reddit.com/r/neovim/comments/1s37hj2/updated_neovim_getting_an_annoying_treesitter/)
-[2] [https://samuellawrentz.com](https://samuellawrentz.com/blog/nvim-treesitter-archived-neovim-0-12-migration/)
-[3] [https://dipankar-das.com](https://dipankar-das.com/blog/nvim-012-migration/)
-[4] [https://news.ycombinator.com](https://news.ycombinator.com/item?id=47565316)
-[5] [https://www.reddit.com](https://www.reddit.com/r/neovim/comments/1s9y00d/for_anyone_experiencing_treesitter_issues_after/)
-[6] [https://justinhj.github.io](http://justinhj.github.io/2026/04/06/refreshing-your-neovim-config-for-0-12-0.html)
-[7] [https://www.lazyvim.org](http://www.lazyvim.org/plugins/treesitter)
-[8] [https://elixirforum.com](https://elixirforum.com/t/neovim-indentation-bug-with-more-than-one-on-a-line-keeps-wrongly-adding-another-indentation/64791)
-[9] [https://www.reddit.com](https://www.reddit.com/r/neovim/comments/1hvodu1/nvimtreesitter_cant_disable_todo_fixme_highlights/)
-[10] [https://www.reddit.com](https://www.reddit.com/r/neovim/comments/1shuvvh/i_broke_my_neovim_setup_then_fixed_it_treesitter/)
-[11] [https://samuellawrentz.com](https://samuellawrentz.com/blog/nvim-treesitter-archived-neovim-0-12-migration/)
-[12] [https://github.com](https://github.com/NvChad/NvChad/discussions/3398)
-[13] [https://github.com](https://github.com/nvim-treesitter/nvim-treesitter/issues/4250)
-[14] [https://www.reddit.com](https://www.reddit.com/r/neovim/comments/1qouuo2/lazy_updatesync_causes_crash/)
-```
-
 = Antes de la clase
 Vimos un poquito lo que hizo el profe.
 
@@ -210,8 +141,6 @@ Limitaciones:
 - Mezcla la info del color con la del brillo, alta sensibilidad.
   Se recomienda convertir la imagen a HSV.
 
-=== HSV
-`hacer apuntes en base a la foto`
 
 === LAB
 L = luminosidad
