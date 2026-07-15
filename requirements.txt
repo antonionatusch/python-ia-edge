@@ -15,3 +15,4 @@ onnx==1.18.0
 onnxruntime==1.22.0
 tensorflow-model-optimization==0.8.0
 ipykernel>=6.15.0
+tensorflow-datasets>=4.9.6
