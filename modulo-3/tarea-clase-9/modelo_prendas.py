@@ -12,6 +12,7 @@ import json
 import random
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -20,6 +21,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from tensorflow import keras
 from tensorflow.keras import layers
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -37,7 +41,7 @@ DEFAULT_CLASSES = [
     "Hat",
     "Skirt",
 ]
-IMAGE_SIZE = 128
+IMAGE_SIZE = 160
 SEED = 42
 
 
@@ -47,7 +51,18 @@ def parse_args():
     )
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--epochs", type=int, default=15)
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=12,
+        help="Epocas con la base MobileNetV2 congelada.",
+    )
+    parser.add_argument(
+        "--fine-tune-epochs",
+        type=int,
+        default=8,
+        help="Epocas adicionales ajustando las ultimas capas de MobileNetV2.",
+    )
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument(
         "--classes",
@@ -155,30 +170,73 @@ def build_model(number_of_classes):
         ],
         name="aumento_datos",
     )
-    model = keras.Sequential(
-        [
-            layers.Input((IMAGE_SIZE, IMAGE_SIZE, 3)),
-            augmentation,
-            layers.Rescaling(1.0 / 255),
-            layers.Conv2D(32, 3, padding="same", activation="relu"),
-            layers.MaxPooling2D(),
-            layers.Conv2D(64, 3, padding="same", activation="relu"),
-            layers.MaxPooling2D(),
-            layers.Conv2D(128, 3, padding="same", activation="relu"),
-            layers.MaxPooling2D(),
-            layers.GlobalAveragePooling2D(),
-            layers.Dropout(0.35),
-            layers.Dense(128, activation="relu"),
-            layers.Dense(number_of_classes, activation="softmax"),
-        ],
-        name="clasificador_prendas_cnn",
+    base_model = keras.applications.MobileNetV2(
+        input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3),
+        include_top=False,
+        weights="imagenet",
     )
+    base_model.trainable = False
+
+    inputs = keras.Input((IMAGE_SIZE, IMAGE_SIZE, 3))
+    x = augmentation(inputs)
+    x = layers.Rescaling(1.0 / 127.5, offset=-1)(x)
+    x = base_model(x, training=False)
+    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Dropout(0.30)(x)
+    outputs = layers.Dense(number_of_classes, activation="softmax")(x)
+    model = keras.Model(inputs, outputs, name="clasificador_prendas_mobilenetv2")
     model.compile(
-        optimizer="adam",
+        optimizer=keras.optimizers.Adam(learning_rate=1e-3),
         loss=keras.losses.SparseCategoricalCrossentropy(),
         metrics=["accuracy"],
     )
-    return model
+    return model, base_model
+
+
+def make_callbacks(model_path, initial_best=None):
+    return [
+        keras.callbacks.EarlyStopping(
+            monitor="val_loss", patience=3, restore_best_weights=True
+        ),
+        keras.callbacks.ModelCheckpoint(
+            model_path,
+            monitor="val_loss",
+            save_best_only=True,
+            initial_value_threshold=initial_best,
+        ),
+    ]
+
+
+def save_training_history(frozen_history, fine_tune_history, output_dir):
+    frames = []
+    next_epoch = 1
+    for phase, history in (
+        ("base_congelada", frozen_history),
+        ("ajuste_fino", fine_tune_history),
+    ):
+        if history is None:
+            continue
+        frame = pd.DataFrame(history.history)
+        frame.insert(0, "epoch", range(next_epoch, next_epoch + len(frame)))
+        frame.insert(1, "phase", phase)
+        frames.append(frame)
+        next_epoch += len(frame)
+
+    history = pd.concat(frames, ignore_index=True)
+    history.to_csv(output_dir / "historial.csv", index=False)
+    figure, axes = plt.subplots(1, 2, figsize=(11, 4))
+    axes[0].plot(history["epoch"], history["loss"], label="entrenamiento")
+    axes[0].plot(history["epoch"], history["val_loss"], label="validacion")
+    axes[0].set(title="Perdida", xlabel="Epoca")
+    axes[1].plot(history["epoch"], history["accuracy"], label="entrenamiento")
+    axes[1].plot(history["epoch"], history["val_accuracy"], label="validacion")
+    axes[1].set(title="Exactitud", xlabel="Epoca")
+    for axis in axes:
+        axis.grid(alpha=0.25)
+        axis.legend()
+    figure.tight_layout()
+    figure.savefig(output_dir / "curvas_entrenamiento.png", dpi=150)
+    plt.close(figure)
 
 
 def train(args):
@@ -193,7 +251,7 @@ def train(args):
     labels_path = args.output_dir / "clases.json"
     labels_path.write_text(json.dumps(class_names, indent=2), encoding="utf-8")
 
-    model = build_model(len(class_names))
+    model, base_model = build_model(len(class_names))
     model.summary()
     weights = compute_class_weight(
         class_weight="balanced",
@@ -201,20 +259,39 @@ def train(args):
         y=train_records["class_id"],
     )
     class_weights = dict(enumerate(weights))
-    callbacks = [
-        keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=3, restore_best_weights=True
-        ),
-        keras.callbacks.ModelCheckpoint(model_path, save_best_only=True),
-    ]
-    model.fit(
+    print("\nFase 1: entrenamiento del clasificador con MobileNetV2 congelada.")
+    frozen_history = model.fit(
         train_data,
         validation_data=validation_data,
         epochs=args.epochs,
         class_weight=class_weights,
-        callbacks=callbacks,
+        callbacks=make_callbacks(model_path),
         shuffle=False,
     )
+
+    frozen_validation_loss = model.evaluate(validation_data, verbose=0)[0]
+    fine_tune_history = None
+    if args.fine_tune_epochs > 0:
+        print("\nFase 2: ajuste fino de las ultimas 30 capas de MobileNetV2.")
+        base_model.trainable = True
+        for layer in base_model.layers[:-30]:
+            layer.trainable = False
+        model.compile(
+            optimizer=keras.optimizers.Adam(learning_rate=1e-5),
+            loss=keras.losses.SparseCategoricalCrossentropy(),
+            metrics=["accuracy"],
+        )
+        fine_tune_history = model.fit(
+            train_data,
+            validation_data=validation_data,
+            epochs=args.fine_tune_epochs,
+            class_weight=class_weights,
+            callbacks=make_callbacks(model_path, frozen_validation_loss),
+            shuffle=False,
+        )
+
+    save_training_history(frozen_history, fine_tune_history, args.output_dir)
+    model = keras.models.load_model(model_path)
 
     loss, accuracy = model.evaluate(test_data, verbose=0)
     probabilities = model.predict(test_data, verbose=0)
@@ -227,6 +304,7 @@ def train(args):
     print(confusion_matrix(expected, predicted))
     print(f"\nModelo guardado en: {model_path}")
     print(f"Clases guardadas en: {labels_path}")
+    print(f"Curvas guardadas en: {args.output_dir / 'curvas_entrenamiento.png'}")
 
 
 def predict(args):
@@ -251,6 +329,8 @@ def main():
     args = parse_args()
     if args.epochs < 1:
         raise ValueError("--epochs debe ser mayor o igual que 1.")
+    if args.fine_tune_epochs < 0:
+        raise ValueError("--fine-tune-epochs no puede ser negativo.")
     if args.batch_size < 1:
         raise ValueError("--batch-size debe ser mayor o igual que 1.")
     set_reproducibility()
