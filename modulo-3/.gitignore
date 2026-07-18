@@ -1,3 +1,8 @@
 clf-data
 # carpeta de datos para la tarea de la clase 9
 data
+# cosas de la clase 12 que se pueden descargar
+dataset_botellas
+*.h
+*.caffemodel
+*.prototxt
