@@ -6,3 +6,5 @@ dataset_botellas
 *.h
 *.caffemodel
 *.prototxt
+# datos de reconocimienot facial clase 13
+rostros_autorizados
