@@ -51,7 +51,12 @@
 #pagebreak()
 *Introducción*
 
-El presente proyecto muestra un sistema #lorem(20)
+El presente proyecto muestra un sistema de monitoreo inteligente motivado
+por la necesidad personal de alimentar a mis mascotas.
+Si bien existen alimentadores inteligentes, como los de Nexxt
+Solutions Home #cite(<AboutNexxtSolutionsHome>, form: "prose"),
+pocos incorporan monitoreo visual capaz de verificar la presencia real
+de alimento y detectar fallos de dispensación.
 
 #pagebreak()
 #counter(page).update(1)

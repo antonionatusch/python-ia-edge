@@ -52,3 +52,10 @@ MermaidJs:
   publisher: Mermaid
   date:
   url: https://mermaid.js.org/
+
+AboutNexxtSolutionsHome:
+  type: web
+  title: 'Sobre Nosotros'
+  publisher: Nexxt Solutions Home
+  date:
+  url: https://www.nexxtsolutions.com/es/conectividad/soporte/sobre-nosotros/
