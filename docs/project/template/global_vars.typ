@@ -1,0 +1,7 @@
+#let STUDENT_FULL_NAME = "Antonio Miguel Natusch Zarco"
+#let COURSE_FULL_NAME = "Edge Computing & Computer Vision para Sistemas Embebidos"
+#let PROJECT_NAME = "Sistema de monitoreo para alimentador de mascotas usando Edge Computing y Computer Vision"
+#let TECHLAB_LOGO = "/template/techlab-logo.png"
+#let EDGE_IMG = "/assets/img/icon.png"
+#let PROFESSOR_NAME = "Ing. Marcelo Enrique Barradas Mercado"
+#let PROJECT_SHORT_NAME = "Monitoreo inteligente para alimentos"

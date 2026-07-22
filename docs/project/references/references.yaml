@@ -1,0 +1,54 @@
+TeachableMachineGoogle:
+  type: web
+  title: 'Teachable Machine'
+  author: Google
+  date:
+  url: https://teachablemachine.withgoogle.com/
+
+QueEsTensorFlowDatabricks:
+  type: web
+  title: '¿Qué es Tensorflow?'
+  author: Personal de Databricks
+  institution: Databricks
+  date: 2018
+  url: https://www.databricks.com/es/blog/what-is-tensorflow
+
+FlutterOfficial2026:
+  type: web
+  title: 'Flutter - Build apps for any screen'
+  author: Flutter
+  publisher: Flutter
+  language: en
+  date: 2026
+  url:
+    value: https://flutter.dev/
+    date: 2026-03-08
+
+MmdrTypst:
+  type: web
+  title: 'mmdr – A Typst plugin to render Mermaid diagrams'
+  author: HSGamer
+  publisher: Typst Universe
+  date: 2026
+  url:
+    value: https://typst.app/universe/package/mmdr/
+    date: 2026-04-27
+
+TypstApp:
+  type: web
+  title: 'Typst: The new foundation for documents'
+  author: Typst GmbH
+  publisher: Typst
+  date:
+  url: https://typst.app/
+
+MermaidJs:
+  type: web
+  title: 'Mermaid – Diagramming and charting tool'
+  author:
+    - Sveidqvist, Knut
+    - Orlandoni, Nacho
+    - Vinod, Sidharth
+  publisher: Mermaid
+  date:
+  url: https://mermaid.js.org/
