@@ -58,4 +58,34 @@ AboutNexxtSolutionsHome:
   title: 'Sobre Nosotros'
   publisher: Nexxt Solutions Home
   date:
+  author: Nexxt Solutions Home
   url: https://www.nexxtsolutions.com/es/conectividad/soporte/sobre-nosotros/
+
+NexxtSmartPetFeeder:
+  type: web
+  title: 'Dispensador Wi-Fi® para mascotas - NHA-P610 | Nexxt Home'
+  publisher: Nexxt Solutions Home
+  date:
+  url: https://www.nexxtsolutions.com/es/conectividad/soporte/sobre-nosotros/
+  author: Nexxt Solutions Home
+
+AAHANutritionAndWeightManagement:
+  type: article
+  title: '2021 AAHA Nutrition and Weight Management Guidelines for Dogs and Cats'
+  author:
+    - Cline, Martha G.
+    - Burns, Kara M.
+    - Coe, Jason B.
+    - Downing, Robin
+    - Durzi, Tiffany
+    - Murphy, Maryanne
+    - Parker, Valerie
+  date: 2021-07-01
+  parent:
+    title: 'Journal of the American Animal Hospital Association'
+    volume: 57
+    issue: 4
+  page-range: 153-178
+  serial-number:
+    doi: 10.5326/JAAHA-MS-7232
+  language: en
