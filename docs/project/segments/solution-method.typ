@@ -20,4 +20,8 @@
   provista por los instructores del curso
   en la presentación del proyecto.
 
+  De forma estructural, se puede desglosar
+  el desarrollo del proyecto en las siguientes fases:
+
+  *Fase 1: Creación del Dataset de Imágenes.*
 ]
