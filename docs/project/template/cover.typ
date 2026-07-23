@@ -38,7 +38,7 @@
 
       #v(2em)
 
-      #align(bottom)[Mayo 2026]
+      #align(bottom)[Julio 2026]
     ]
   ]
 }

@@ -54,7 +54,7 @@
 El presente proyecto muestra un sistema de monitoreo inteligente motivado
 por la necesidad personal de alimentar a mis mascotas.
 Si bien existen alimentadores inteligentes, como los de Nexxt
-Solutions Home @AboutNexxtSolutionsHome
+Solutions Home @AboutNexxtSolutionsHome,
 pocos incorporan monitoreo visual capaz de verificar la presencia real
 de alimento y detectar fallos de dispensación.
 
