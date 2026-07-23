@@ -10,9 +10,9 @@
   Sistemas Embebidos' de Tech Lab Bolivia, utilizando técnicas como
   el procesamiento de imágenes @DatahackerOpenCVManipulatingImagePixels2019,
   visión computacional @IBMComputerVision2025 y
-  machine learning /* poner cita */ junto a
+  machine learning @IBMMachineLearning2025 junto a
   protocolos de red (entre ellos,
-  WebSockets) /* poner cita */
+  WebSockets) @IBMWebSocket2026
   y el marco de trabajo de desarrollo
   de interfaces móviles llamado Flutter @FlutterOfficial2026
   para mejorar la atención y precisión
@@ -22,10 +22,10 @@
 
   Durante la implementación, entrenar
   un modelo de visión computacional
-  con Edge Impulse /* agregar cita */
+  con Edge Impulse @EdgeImpulseWhatIsEI
   para que sea compatible con
   las especificaciones de hardware del microprocesador
-  ESP32-CAM-CH340-WIFI BLUETOOTH OV2640 /* agregar cita */
+  ESP32-CAM-CH340-WIFI BLUETOOTH OV2640 @ESP32CAMProductSpecification
   para optimizar el uso de
   los recursos tanto del microprocesador como
   de otros los componentes de hardware involucrados.

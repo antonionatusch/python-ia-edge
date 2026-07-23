@@ -112,4 +112,46 @@ DatahackerOpenCVManipulatingImagePixels2019:
   date: 2019-04-30
   url:
     value: https://datahacker.rs/opencv-manipulating-image-pixel/
-    date: 2026-03-10
+
+IBMMachineLearning2025:
+  type: web
+  title: '¿Qué es el machine learning (ML) o aprendizaje automático?'
+  author:
+    - Bergmann, Dave
+  publisher: IBM
+  language: es
+  date: 2025-08-18
+  url:
+    value: https://www.ibm.com/es-es/think/topics/machine-learning
+
+IBMWebSocket2026:
+  type: web
+  title: 'WebSocket'
+  author: IBM
+  publisher: IBM
+  language: es
+  date: 2026-03-24
+  url:
+    value: https://www.ibm.com/docs/es/was/9.0.5?topic=applications-websocket
+
+EdgeImpulseWhatIsEI:
+  type: web
+  title: 'What Is Edge Impulse? - Edge Impulse Documentation'
+  author: Edge Impulse
+  publisher: Edge Impulse
+  language: en
+  date:
+  url:
+    value: https://docs.edgeimpulse.com/knowledge/courses/edge-ai-fundamentals/what-is-edge-impulse
+
+ESP32CAMProductSpecification:
+  type: report
+  title: 'ESP32-CAM Wi-Fi+BT SoC Module'
+  author: Shenzhen Ai-Thinker Technology Co., Ltd.
+  publisher: Shenzhen Ai-Thinker Technology Co., Ltd.
+  date: 2017
+  edition: 'Version 1.0'
+  language: en
+  url:
+    value: https://github.com/raphaelbs/esp32-cam-ai-thinker/blob/master/assets/ESP32-CAM_Product_Specification.pdf
+    date: 2026-07-23
