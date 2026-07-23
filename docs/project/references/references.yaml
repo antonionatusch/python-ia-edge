@@ -89,3 +89,27 @@ AAHANutritionAndWeightManagement:
   serial-number:
     doi: 10.5326/JAAHA-MS-7232
   language: en
+
+IBMComputerVision2025:
+  type: web
+  title: 'What Is Computer Vision?'
+  author:
+    - Caballar, Rina Diane
+    - Stryker, Cole
+  publisher: 'IBM'
+  language: en
+  date: 2025-11-20
+  url:
+    value: https://www.ibm.com/think/topics/computer-vision
+    date: 2026-03-08
+
+DatahackerOpenCVManipulatingImagePixels2019:
+  type: web
+  title: 'OpenCV #001 Manipulating Image Pixels'
+  author: 'datahacker.rs'
+  publisher: 'Master Data Science'
+  language: en
+  date: 2019-04-30
+  url:
+    value: https://datahacker.rs/opencv-manipulating-image-pixel/
+    date: 2026-03-10
