@@ -4,7 +4,7 @@
 #import "segments/solution-method.typ": *
 #import "segments/project-content.typ": *
 #import "segments/about-development.typ": *
-#import "segments/key-screens-screenshots.typ": *
+#import "segments/main-scenarios-screenshots.typ": *
 #import "segments/architecture-description.typ": *
 #import "segments/architecture-diagram.typ": *
 #import "segments/code-snippets.typ": *
@@ -95,8 +95,8 @@ de alimento y detectar fallos de dispensación.
 #architecture_diagram
 
 #pagebreak()
-== Capturas de pantalla de pantallas clave
-#key_screens_screenshots
+== Capturas de pantalla de escenarios principales
+#main_scenarios_screenshots
 
 #pagebreak()
 == Fragmentos de código
