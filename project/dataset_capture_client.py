@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
-"""Interactive HTTP dataset collector for the ESP32-CAM GC2145 server."""
+"""Interactive WebSocket dataset collector for the ESP32-CAM GC2145 server."""
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import csv
 import hashlib
 import os
 import re
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlparse
 
 import cv2
 import numpy as np
 import requests
+import websockets
+from websockets.exceptions import WebSocketException
 
 
 CLASSES = ("empty", "half_full", "full", "obstructed")
@@ -46,6 +51,13 @@ class Capture:
     zoom: float
     source_sha256: str
     difference_from_previous: float | None
+
+
+@dataclass
+class StreamState:
+    class_index: int = 0
+    zoom_index: int = 0
+    last_saved_original: np.ndarray | None = None
 
 
 class DatasetManager:
@@ -177,13 +189,23 @@ class DatasetManager:
 
 
 class CameraClient:
-    def __init__(self, base_url: str, timeout: float) -> None:
+    def __init__(self, base_url: str, timeout: float, websocket_port: int) -> None:
         self.session = requests.Session()
         self.timeout = timeout
+        self.websocket_port = websocket_port
         self.base_url = normalize_url(base_url)
 
     def set_base_url(self, base_url: str) -> None:
         self.base_url = normalize_url(base_url)
+
+    @property
+    def websocket_url(self) -> str:
+        parsed = urlparse(self.base_url)
+        host = parsed.hostname or parsed.path
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        scheme = "wss" if parsed.scheme == "https" else "ws"
+        return f"{scheme}://{host}:{self.websocket_port}"
 
     def status(self) -> bool:
         try:
@@ -215,15 +237,7 @@ class CameraClient:
             print(f"Respuesta invalida: Content-Type={content_type!r}")
             return None
 
-        encoded = np.frombuffer(response.content, dtype=np.uint8)
-        image = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
-        if image is None or image.size == 0:
-            print(f"OpenCV no pudo decodificar el BMP de {len(response.content)} bytes.")
-            return None
-        if image.shape[:2] != (120, 160):
-            print(f"Captura invalida: se esperaba 160x120 y llego {image.shape[1]}x{image.shape[0]}.")
-            return None
-        return image
+        return decode_bmp(response.content, "respuesta HTTP")
 
 
 def normalize_url(value: str) -> str:
@@ -231,6 +245,21 @@ def normalize_url(value: str) -> str:
     if not value.startswith(("http://", "https://")):
         value = f"http://{value}"
     return value
+
+
+def decode_bmp(data: bytes, source: str) -> np.ndarray | None:
+    encoded = np.frombuffer(data, dtype=np.uint8)
+    image = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+    if image is None or image.size == 0:
+        print(f"OpenCV no pudo decodificar el BMP de {source} ({len(data)} bytes).")
+        return None
+    if image.shape[:2] != (120, 160):
+        print(
+            f"Frame invalido de {source}: se esperaba 160x120 y llego "
+            f"{image.shape[1]}x{image.shape[0]}."
+        )
+        return None
+    return image
 
 
 def digital_zoom(image: np.ndarray, zoom: float) -> np.ndarray:
@@ -292,7 +321,7 @@ def add_preview_label(image: np.ndarray, lines: Iterable[str]) -> np.ndarray:
     return preview
 
 
-def review_capture(capture: Capture, class_name: str, duplicate: bool) -> str:
+async def review_capture(capture: Capture, class_name: str, duplicate: bool) -> str:
     original_preview = add_preview_label(
         capture.original, (f"ORIGINAL | clase: {class_name}", "Sin zoom ni realce")
     )
@@ -308,7 +337,8 @@ def review_capture(capture: Capture, class_name: str, duplicate: bool) -> str:
     print("Revision: [O] original  [P/A] procesada  [B] ambas  [D] descartar  [R] repetir  [F] forzar duplicado")
     duplicate_blocked = duplicate
     while True:
-        key = cv2.waitKey(0) & 0xFF
+        key = cv2.waitKey(20) & 0xFF
+        await asyncio.sleep(0.01)
         if key in (ord("d"), ord("D"), 27):
             return "discard"
         if key in (ord("r"), ord("R")):
@@ -328,20 +358,10 @@ def review_capture(capture: Capture, class_name: str, duplicate: bool) -> str:
             return "both"
 
 
-def select_zoom(current: float) -> float:
-    print("Zoom disponible: " + " | ".join(f"{index + 1}: {zoom:.2f}x" for index, zoom in enumerate(ZOOM_LEVELS)))
-    choice = input(f"Zoom [{current:.2f}x]: ").strip()
-    if not choice:
-        return current
-    try:
-        return ZOOM_LEVELS[int(choice) - 1]
-    except (ValueError, IndexError):
-        print("Nivel de zoom invalido; se conserva el valor actual.")
-        return current
-
-
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Captura un dataset desde ESP32-CAM por HTTP.")
+    parser = argparse.ArgumentParser(
+        description="Previsualiza y captura un dataset desde ESP32-CAM por WebSocket."
+    )
     parser.add_argument("--ip", help="IP o URL del ESP32-CAM, por ejemplo 192.168.1.50")
     parser.add_argument(
         "--dataset",
@@ -350,6 +370,8 @@ def parse_args() -> argparse.Namespace:
         help="Carpeta raiz del dataset (por defecto: project/dataset)",
     )
     parser.add_argument("--timeout", type=float, default=12.0, help="Timeout HTTP en segundos")
+    parser.add_argument("--fps", type=int, default=4, help="FPS solicitados al ESP32 (1-8)")
+    parser.add_argument("--ws-port", type=int, default=81, help="Puerto WebSocket del ESP32")
     parser.add_argument(
         "--duplicate-threshold",
         type=float,
@@ -359,105 +381,176 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
-    args = parse_args()
-    if args.timeout <= 0 or not 0 <= args.duplicate_threshold <= 1:
-        print("--timeout debe ser positivo y --duplicate-threshold debe estar entre 0 y 1.")
-        return 2
+async def run_stream(
+    camera: CameraClient,
+    dataset: DatasetManager,
+    state: StreamState,
+    fps: int,
+    duplicate_threshold: float,
+) -> str:
+    print(f"Conectando al stream {camera.websocket_url} ...")
+    async with websockets.connect(
+        camera.websocket_url,
+        open_timeout=camera.timeout,
+        ping_interval=20,
+        ping_timeout=20,
+        max_size=128 * 1024,
+        max_queue=2,
+    ) as websocket:
+        await websocket.send(f"FPS:{fps}")
+        await websocket.send("START")
+        print("Stream conectado.")
+        print("[1-4] clase  [Z] zoom  [C] capturar  [S] estado  [I] cambiar IP  [Q] salir")
 
-    address = args.ip or input("IP del ESP32-CAM: ").strip()
-    if not address:
-        print("Debe indicar una direccion IP.")
-        return 2
+        receive_task = asyncio.create_task(websocket.recv())
+        latest_original: np.ndarray | None = None
+        latest_processed: np.ndarray | None = None
+        measured_fps = 0.0
+        previous_frame_at: float | None = None
 
-    dataset = DatasetManager(args.dataset.expanduser().resolve())
-    camera = CameraClient(address, args.timeout)
-    current_class = CLASSES[0]
-    current_zoom = ZOOM_LEVELS[0]
-    last_saved_original: np.ndarray | None = None
-
-    print(f"Dataset: {dataset.root}")
-    camera.status()
-
-    try:
-        while True:
-            print(f"\nClase: {current_class} | zoom procesado: {current_zoom:.2f}x")
-            dataset.print_counts()
-            print("[1] empty  [2] half_full  [3] full  [4] obstructed")
-            print("[C] capturar  [Z] cambiar zoom  [I] cambiar IP  [S] estado  [Q] salir")
-            choice = input("> ").strip().lower()
-
-            if choice in {"1", "2", "3", "4"}:
-                current_class = CLASSES[int(choice) - 1]
-                continue
-            if choice == "z":
-                current_zoom = select_zoom(current_zoom)
-                continue
-            if choice == "i":
-                new_address = input(f"Nueva IP o URL [{camera.base_url}]: ").strip()
-                if new_address:
-                    camera.set_base_url(new_address)
-                    camera.status()
-                continue
-            if choice == "s":
-                camera.status()
-                continue
-            if choice == "q":
-                break
-            if choice != "c":
-                print("Opcion no reconocida.")
-                continue
-
+        try:
             while True:
-                print("Solicitando captura...")
-                original = camera.capture()
-                if original is None:
-                    retry = input("La captura fallo. [R] reintentar o [M] menu: ").strip().lower()
-                    if retry == "r":
-                        continue
-                    break
+                done, _ = await asyncio.wait({receive_task}, timeout=0.02)
+                if receive_task in done:
+                    message = receive_task.result()
+                    receive_task = asyncio.create_task(websocket.recv())
+                    if isinstance(message, bytes):
+                        decoded = decode_bmp(message, "stream WebSocket")
+                        if decoded is not None:
+                            latest_original = decoded
+                            zoom = ZOOM_LEVELS[state.zoom_index]
+                            latest_processed = enhance_luminance(digital_zoom(decoded, zoom))
+                            now = time.monotonic()
+                            if previous_frame_at is not None:
+                                instantaneous = 1.0 / max(now - previous_frame_at, 1e-6)
+                                measured_fps = (
+                                    instantaneous
+                                    if measured_fps == 0.0
+                                    else measured_fps * 0.8 + instantaneous * 0.2
+                                )
+                            previous_frame_at = now
+                            class_name = CLASSES[state.class_index]
+                            original_preview = add_preview_label(
+                                latest_original,
+                                (
+                                    f"EN VIVO | clase: {class_name}",
+                                    f"Original 160x120 | {measured_fps:.1f} FPS",
+                                    "C capturar | 1-4 clase | Z zoom | Q salir",
+                                ),
+                            )
+                            processed_preview = add_preview_label(
+                                latest_processed,
+                                (
+                                    f"EN VIVO PROCESADA | zoom: {zoom:.2f}x",
+                                    "CLAHE suave en luminancia",
+                                ),
+                            )
+                            cv2.imshow("Original recibida", original_preview)
+                            cv2.imshow("Zoom + realce CLAHE", processed_preview)
+                    elif message.startswith("ERROR:"):
+                        print(f"ESP32 WebSocket: {message}")
 
+                key = cv2.waitKey(1) & 0xFF
+                if key in (ord("q"), ord("Q"), 27):
+                    await websocket.send("STOP")
+                    return "quit"
+                if key in (ord("i"), ord("I")):
+                    await websocket.send("STOP")
+                    return "change_ip"
+                if key in (ord("s"), ord("S")):
+                    await asyncio.to_thread(camera.status)
+                    continue
+                if key in (ord("1"), ord("2"), ord("3"), ord("4")):
+                    state.class_index = int(chr(key)) - 1
+                    print(f"Clase seleccionada: {CLASSES[state.class_index]}")
+                    dataset.print_counts()
+                    continue
+                if key in (ord("z"), ord("Z")):
+                    state.zoom_index = (state.zoom_index + 1) % len(ZOOM_LEVELS)
+                    print(f"Zoom seleccionado: {ZOOM_LEVELS[state.zoom_index]:.2f}x")
+                    continue
+                if key not in (ord("c"), ord("C")):
+                    continue
+                if latest_original is None or latest_processed is None:
+                    print("Todavia no se recibio un frame valido.")
+                    continue
+
+                await websocket.send("PAUSE")
+                original = latest_original.copy()
+                zoom = ZOOM_LEVELS[state.zoom_index]
+                processed = enhance_luminance(digital_zoom(original, zoom))
                 difference = (
                     None
-                    if last_saved_original is None
-                    else normalized_difference(last_saved_original, original)
+                    if state.last_saved_original is None
+                    else normalized_difference(state.last_saved_original, original)
                 )
-                duplicate = difference is not None and difference < args.duplicate_threshold
-                zoomed = digital_zoom(original, current_zoom)
-                processed = enhance_luminance(zoomed)
+                duplicate = difference is not None and difference < duplicate_threshold
                 capture = Capture(
                     original=original,
                     processed=processed,
-                    zoom=current_zoom,
+                    zoom=zoom,
                     source_sha256=hashlib.sha256(original.tobytes()).hexdigest(),
                     difference_from_previous=difference,
                 )
                 if difference is not None:
                     print(f"Diferencia respecto de la ultima captura guardada: {difference:.4f}")
 
-                action = review_capture(capture, current_class, duplicate)
-                cv2.destroyAllWindows()
-                cv2.waitKey(1)
-                if action == "repeat":
-                    continue
+                action = await review_capture(capture, CLASSES[state.class_index], duplicate)
                 if action == "discard":
                     print("Captura descartada.")
-                    break
+                elif action != "repeat":
+                    variants = ("original", "processed") if action == "both" else (action,)
+                    try:
+                        paths = dataset.save(
+                            capture, CLASSES[state.class_index], variants, camera.base_url
+                        )
+                    except (OSError, csv.Error) as error:
+                        print(f"No se pudo guardar la captura: {error}")
+                    else:
+                        state.last_saved_original = original.copy()
+                        print("Guardado: " + ", ".join(str(path) for path in paths))
+                        dataset.print_counts()
+                await websocket.send("START")
+        finally:
+            receive_task.cancel()
+            await asyncio.gather(receive_task, return_exceptions=True)
 
-                variants = ("original", "processed") if action == "both" else (action,)
-                try:
-                    paths = dataset.save(capture, current_class, variants, camera.base_url)
-                except (OSError, csv.Error) as error:
-                    print(f"No se pudo guardar la captura: {error}")
-                    retry = input("[R] intentar otra captura o [M] menu: ").strip().lower()
-                    if retry == "r":
-                        continue
-                    break
 
-                last_saved_original = original.copy()
-                print("Guardado: " + ", ".join(str(path) for path in paths))
-                dataset.print_counts()
+async def async_main(args: argparse.Namespace) -> int:
+    address = args.ip or await asyncio.to_thread(input, "IP del ESP32-CAM: ")
+    address = address.strip()
+    if not address:
+        print("Debe indicar una direccion IP.")
+        return 2
+
+    dataset = DatasetManager(args.dataset.expanduser().resolve())
+    camera = CameraClient(address, args.timeout, args.ws_port)
+    state = StreamState()
+    print(f"Dataset: {dataset.root}")
+    await asyncio.to_thread(camera.status)
+    dataset.print_counts()
+
+    try:
+        while True:
+            try:
+                result = await run_stream(
+                    camera, dataset, state, args.fps, args.duplicate_threshold
+                )
+            except (OSError, WebSocketException, asyncio.TimeoutError) as error:
+                print(f"Conexion WebSocket perdida: {error}")
+                print("Reintentando en 2 segundos. Presione Ctrl+C para salir.")
+                await asyncio.sleep(2)
+                continue
+
+            if result == "quit":
                 break
+            if result == "change_ip":
+                new_address = await asyncio.to_thread(
+                    input, f"Nueva IP o URL [{camera.base_url}]: "
+                )
+                if new_address.strip():
+                    camera.set_base_url(new_address)
+                    await asyncio.to_thread(camera.status)
     except (KeyboardInterrupt, EOFError):
         print("\nCaptura interrumpida por el usuario.")
     finally:
@@ -466,6 +559,24 @@ def main() -> int:
 
     print("Programa finalizado sin perder las capturas guardadas.")
     return 0
+
+
+def main() -> int:
+    args = parse_args()
+    if (
+        args.timeout <= 0
+        or not 0 <= args.duplicate_threshold <= 1
+        or not 1 <= args.fps <= 8
+        or not 1 <= args.ws_port <= 65535
+    ):
+        print("Revise: timeout > 0, umbral 0-1, FPS 1-8 y puerto 1-65535.")
+        return 2
+    try:
+        return asyncio.run(async_main(args))
+    except KeyboardInterrupt:
+        cv2.destroyAllWindows()
+        print("\nCaptura interrumpida por el usuario.")
+        return 0
 
 
 if __name__ == "__main__":
