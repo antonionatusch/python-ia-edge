@@ -74,37 +74,123 @@ class DatasetManager:
         for class_name in CLASSES:
             (self.root / class_name).mkdir(exist_ok=True)
 
+        # 1) Read existing CSV rows keyed by sample_id.
+        csv_rows: dict[str, dict[str, str]] = {}
         if self.metadata_path.exists():
             try:
                 with self.metadata_path.open("r", newline="", encoding="utf-8") as file:
                     for row in csv.DictReader(file):
-                        class_name = row.get("class", "")
                         sample_id = row.get("sample_id", "")
-                        if class_name in CLASSES and sample_id:
-                            self._known_sample_ids.add(sample_id)
-                            try:
-                                sequence = int(row.get("sequence", "0"))
-                            except ValueError:
-                                sequence = 0
-                            self.next_sequences[class_name] = max(
-                                self.next_sequences[class_name], sequence + 1
-                            )
+                        csv_rows[sample_id] = row
             except (OSError, csv.Error) as error:
                 print(f"Advertencia: no se pudo leer metadata.csv: {error}")
 
-        # Also discover PNG files if metadata was removed or is incomplete.
+        # 2) Discover PNG files on disk keyed by sample_id.
+        png_sample_ids: dict[str, dict[str, str]] = {}
+        png_pattern = re.compile(
+            r"^([a-z]+_\d{8}_\d{6}_\d{6}_\d{5})_(original|processed)_z[\dp]+\.png$"
+        )
         for class_name in CLASSES:
-            pattern = re.compile(
-                rf"^({re.escape(class_name)}_\d{{8}}_\d{{12}}_(\d{{5}}))_"
+            class_pattern = re.compile(
+                rf"^({re.escape(class_name)}_\d{{8}}_\d{{6}}_\d{{6}}_(\d{{5}}))_"
             )
             for path in (self.root / class_name).glob("*.png"):
-                match = pattern.match(path.name)
+                match = png_pattern.match(path.name)
                 if match:
-                    self._known_sample_ids.add(match.group(1))
-                    self.next_sequences[class_name] = max(
-                        self.next_sequences[class_name], int(match.group(2)) + 1
-                    )
+                    sample_id = match.group(1)
+                    png_sample_ids[sample_id] = {
+                        "class": class_name,
+                        "filename": (self.root / class_name / path.name).relative_to(
+                            self.root
+                        ).as_posix(),
+                    }
+                else:
+                    # Accept legacy filenames (no variant/zoom tag).
+                    class_match = class_pattern.match(path.name)
+                    if class_match:
+                        sample_id = class_match.group(1)
+                        png_sample_ids[sample_id] = {
+                            "class": class_name,
+                            "filename": (self.root / class_name / path.name)
+                            .relative_to(self.root)
+                            .as_posix(),
+                        }
 
+        # 3) Reconcile: remove CSV entries without PNGs on disk.
+        valid_csv: dict[str, dict[str, str]] = {}
+        orphaned_count = 0
+        for sample_id, row in csv_rows.items():
+            if sample_id in png_sample_ids:
+                valid_csv[sample_id] = row
+            else:
+                orphaned_count += 1
+        if orphaned_count > 0:
+            print(
+                f"Reconciliacion metadata: {orphaned_count} entrada(s) en metadata.csv "
+                "sin PNG en disco (eliminadas)."
+            )
+
+        # 4) Reconcile: add PNG entries missing from CSV.
+        added_count = 0
+        for sample_id, info in png_sample_ids.items():
+            if sample_id not in valid_csv:
+                try:
+                    sequence = int(sample_id.split("_")[-1])
+                except ValueError:
+                    sequence = 0
+                valid_csv[sample_id] = {
+                    "sample_id": sample_id,
+                    "class": info["class"],
+                    "captured_at": "",
+                    "sequence": str(sequence),
+                    "variant": "unknown",
+                    "filename": info["filename"],
+                    "zoom": "",
+                    "zoom_applied": "",
+                    "enhancement": "",
+                    "source_width": "",
+                    "source_height": "",
+                    "source_sha256": "",
+                    "difference_from_previous": "",
+                    "esp32_url": "",
+                }
+                added_count += 1
+        if added_count > 0:
+            print(
+                f"Reconciliacion metadata: {added_count} PNG(s) en disco "
+                "sin entrada en metadata.csv (agregados)."
+            )
+
+        # 5) Rewrite metadata.csv with reconciled rows.
+        if valid_csv or csv_rows:
+            try:
+                with self.metadata_path.open(
+                    "w", newline="", encoding="utf-8"
+                ) as file:
+                    writer = csv.DictWriter(file, fieldnames=METADATA_FIELDS)
+                    writer.writeheader()
+                    for row in valid_csv.values():
+                        writer.writerow(row)
+                    file.flush()
+                    os.fsync(file.fileno())
+            except (OSError, csv.Error) as error:
+                print(f"Advertencia: no se pudo reescribir metadata.csv: {error}")
+
+        # 6) Rebuild internal state from the reconciled metadata.
+        for row in valid_csv.values():
+            class_name = row.get("class", "")
+            sample_id = row.get("sample_id", "")
+            if class_name in CLASSES and sample_id:
+                self._known_sample_ids.add(sample_id)
+                try:
+                    sequence = int(row.get("sequence", "0"))
+                except ValueError:
+                    sequence = 0
+                self.next_sequences[class_name] = max(
+                    self.next_sequences[class_name], sequence + 1
+                )
+
+        # 7) Final count from all known sample_ids.
         for sample_id in self._known_sample_ids:
             for class_name in CLASSES:
                 if sample_id.startswith(f"{class_name}_"):

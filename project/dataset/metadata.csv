@@ -1,2 +1,2 @@
 sample_id,class,captured_at,sequence,variant,filename,zoom,zoom_applied,enhancement,source_width,source_height,source_sha256,difference_from_previous,esp32_url
-obstructed_20260724_163022_982539_00001,obstructed,2026-07-24T16:30:22.982-04:00,1,original,obstructed/obstructed_20260724_163022_982539_00001_original_z1p00.png,1.00,False,none,160,120,2ca7ffce30ecfbbcf8c9d436fed0bdca337ae4791b1ca610e2bf2ab357e99446,,http://192.168.0.17
+empty_20260724_165729_378416_00001,empty,2026-07-24T16:57:29.378-04:00,1,processed,empty/empty_20260724_165729_378416_00001_processed_z1p00.png,1.00,False,CLAHE_L_1.5_8x8,160,120,70419633a848aaeae9ff30feddae7cbbcf187604521bcdd0a2a58c9ef5bee8a8,,http://192.168.0.17
