@@ -81,7 +81,6 @@ de alimento y detectar fallos de dispensación.
 #work_objective
 = Método de solución
 #solution_method
-#pagebreak()
 = Contenido del proyecto
 #project_content
 = Desarrollo
