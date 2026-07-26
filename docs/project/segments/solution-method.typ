@@ -3,7 +3,7 @@
   El método de solución para el presente trabajo consiste
   en desarrollar el sistema de monitoreo, el cual incluye
   componentes de hardware tipo SoC (_system on
-  a chip_, por sus siglas en inglés/* agregar cita */), procesamiento
+  a chip_, por sus siglas en inglés @DigiInternationalSoCDefinition), procesamiento
   y envío de imágenes mediante protocolos de comunicación
   remotos, manejo y emisión
   de eventos según la clasificación
@@ -24,11 +24,15 @@
   De forma estructural, se puede desglosar
   el desarrollo del proyecto en las siguientes fases:
 
-  *Fase 0: Adquisión de Materiales.*
+  *Fase 0: Adquisición de materiales.*
 
   #lorem(40)
 
-  *Fase 1: Creación del Dataset de Imágenes.*
+  *Fase 1: Diseño e implementación de componentes de hardware.*
+
+  #lorem(40)
+
+  *Fase 2: Creación del dataset de imágenes.*
 
   Se recolectan imágenes para las clases:
 
@@ -45,6 +49,7 @@
     note: "Elaboración propia.",
   )
 
+  #pagebreak()
   Bajo los siguientes contextos lumínicos:
 
   #apa-figure(
@@ -59,7 +64,6 @@
     note: "Elaboración propia.",
   )
 
-  #pagebreak()
   Al término del proceso de recolección, se cuenta con las siguientes cantidades:
 
   #apa-figure(
@@ -87,4 +91,22 @@
   luminancia en el espacio de color LAB, preservando intactos
   los canales de crominancia (A y B), lo que mejora el contraste
   local sin alterar la información cromática de la imagen.
+
+  #pagebreak()
+
+  *Fase 3: Definición de estrategia de aprendizaje automático y entrenamiento del modelo.*
+
+  #lorem(40)
+
+  *Fase 4: Exportación e importación del modelo en ESP32-CAM.*
+
+  #lorem(40)
+
+  *Fase 5: Desarrollo de los componentes de software.*
+
+  #lorem(40)
+
+  *Fase 6: Despliegue del sistema de monitoreo.*
+
+  #lorem(40)
 ]
