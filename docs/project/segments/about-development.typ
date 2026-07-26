@@ -5,11 +5,35 @@
 
   *Fase 0: Adquisición de materiales.*
 
-  #lorem(40)
+  Previo a realizar cualquier esfuerzo de diseño e implementación,
+  se adquieren los siguientes materiales considerando
+  las necesidades de hardware del sistema:
+
+  #apa-figure(
+    table(
+      columns: 5,
+      table.header([Componente], [Cantidad utilizada], [Especificación], [Uso en el sistema], [Precio de compra]),
+      [], [], [], [], [],
+      [], [], [], [], [],
+      [], [], [], [], [],
+      [], [], [], [], [],
+      [], [], [], [], [],
+    ),
+    caption: "Tabla de materiales adquiridos para el hardware del sistema de monitoreo",
+    note: "Elaboración propia.",
+  )
 
   *Fase 1: Diseño e implementación de componentes de hardware.*
 
-  #lorem(40)
+  Antes de armar en físico el circuito de hardware del sistema,
+  es prudente diseñar, imitando lo mejor posible el funcionamiento
+  esperado, el sistema antes de pasar a la implementación real
+  de los componentes involucrados.
+  Tomando en cuenta su facilidad de uso, se opta por usar
+  Wokwi. Wokwi es una herramienta un simulador de
+  componentes electrónicos online que se puede usar
+  para simular placas como Arduino, ESP32, STM32
+  y muchas otras placas, partes y sensores populares. @WokwiWelcome2026
 
   *Fase 2: Creación del dataset de imágenes.*
 
