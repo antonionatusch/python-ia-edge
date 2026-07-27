@@ -35,6 +35,40 @@
   para simular placas como Arduino, ESP32, STM32
   y muchas otras placas, partes y sensores populares. @WokwiWelcome2026
 
+  Para sustituir el ESP32-CAM y el ventilador, se utilizan
+  LEDs verde y azul (respectivamente) para acelerar
+  el proceso de validación de conexión.
+
+  #grid(
+    rows: 3,
+    row-gutter: 2em,
+    align: center,
+
+    apa-figure(
+      image("../assets/images/wokwi-before-activation-period.png", width: 80%),
+      caption: [Estado del circuito en la simulación previa activación],
+    ),
+
+    apa-figure(
+      image("../assets/images/wokwi-during-activation-period.png", width: 80%),
+      caption: [Estado del circuito en la simulación durante el periodo de activación],
+    ),
+
+    apa-figure(
+      image("../assets/images/wokwi-after-activation-period.png", width: 80%),
+      caption: [Estado del circuito en la simulación después del periodo de activación],
+    ),
+  )
+
+  Según las ilustraciones, se verifica que la sincronización
+  del reloj
+  con el tiempo real de Bolivia mediante el protocolo
+  NTP se da exitosamente, pudiendo así condicionar
+  el encendido o apagado de los componentes simulados.
+
+  Una vez validado el concepto, se procede a implementar el
+  hardware real del sistema.
+
   *Fase 2: Creación del dataset de imágenes.*
 
   Se recolectan imágenes para las clases:
