@@ -62,7 +62,7 @@
 
   Según las ilustraciones, se verifica que la sincronización
   del reloj
-  con el tiempo real de Bolivia mediante el protocolo
+  con la hora oficial de Bolivia mediante el protocolo
   NTP se da exitosamente, pudiendo así condicionar
   el encendido o apagado de los componentes simulados.
 
@@ -77,12 +77,12 @@
     table(
       columns: 2,
       table.header([Clase], [Descripción]),
-      [`empty`], [Plato completamente vacío],
-      [`half_full`], [Plato con alimento a nivel medio],
-      [`full`], [Plato con alimento al máximo],
-      [`obstructed`], [Plato obstruido (objeto, suciedad, mascota)],
+      [`empty`], [Plato sin alimento visible],
+      [`food_available`], [Plato con alimento visible y accesible],
+      [`unknown`],
+      [Escena que no corresponde claramente a las clases anteriores, como presencia de la mascota, objetos extraños, suciedad, cámara cubierta o una posible obstrucción],
     ),
-    caption: "Clases para el modelo de visión computacional",
+    caption: "Clases definidas para el modelo de visión computacional",
     note: "Elaboración propia.",
   )
 
@@ -100,6 +100,7 @@
     note: "Elaboración propia.",
   )
 
+  #pagebreak()
   Al término del proceso de recolección, se cuenta con las siguientes cantidades:
 
   #apa-figure(
@@ -107,26 +108,20 @@
       columns: 5,
       table.header([Clase], [Mañana], [Tarde], [Noche], [Total por clase]),
       [`empty`], [a], [a], [a], [t],
-      [`half_full`], [a], [a], [a], [t],
-      [`full`], [a], [a], [a], [t],
-      [`obstructed`], [a], [a], [a], [t],
-      [Total por turno], [$sum_i^n a$], [$sum_i^n a$], [$sum_i^n a$], [$sum_i^n t$],
+      [`food_available`], [a], [a], [a], [t],
+      [`unknown`], [a], [a], [a], [t],
+      [Total por periodo], [$sum_i^n a$], [$sum_i^n a$], [$sum_i^n a$], [$sum_i^n t$],
     ),
-    caption: "Muestras tomadas para el dataset final",
+    caption: "Distribución de las muestras del dataset final",
     note: "Elaboración propia.",
   )
 
-  Cada imagen capturada es almacenada en su resolución original de
-  160×120 píxeles (formato RGB565, conversión a BMP mediante
-  `frame2bmp()` de la librería `esp32-camera`). Adicionalmente,
-  se genera una versión procesada sometida a un filtro de realce
-  de luminancia mediante _Contrast Limited Adaptive Histogram
-  Equalization_ (CLAHE), con los siguientes parámetros: un límite
-  de recorte (`clipLimit`) de 1,5 y una cuadrícula de ecualización
-  de 8×8 bloques. Este filtro se aplica únicamente al canal de
-  luminancia en el espacio de color LAB, preservando intactos
-  los canales de crominancia (A y B), lo que mejora el contraste
-  local sin alterar la información cromática de la imagen.
+  Cada imagen es capturada originalmente con una resolución
+  de 320×240 píxeles en formato RGB565. Debido a que el sensor
+  GC2145 incorporado en el módulo utilizado no proporciona
+  compresión JPEG por hardware, cada píxel se representa mediante
+  16 bits, por lo que cada captura ocupa 153600 bytes antes de su
+  conversión o almacenamiento.
 
   *Fase 3: Definición de estrategia de aprendizaje automático y entrenamiento del modelo.*
 
