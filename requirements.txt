@@ -18,3 +18,4 @@ ipykernel>=6.15.0
 tensorflow-datasets>=4.9.6
 protobuf==4.25.9
 importlib-resources==7.1.0
+pillow==12.3.0
