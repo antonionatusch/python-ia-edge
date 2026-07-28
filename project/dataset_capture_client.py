@@ -23,9 +23,11 @@ import requests
 import websockets
 from websockets.exceptions import WebSocketException
 
-
-CLASSES = ("empty", "half_full", "full", "obstructed")
+CLASSES = ("empty", "food_available", "unknown")
 ZOOM_LEVELS = (1.0, 1.25, 1.5, 2.0)
+FRAME_WIDTH = 320
+FRAME_HEIGHT = 240
+EXPECTED_RGB565_BYTES = FRAME_WIDTH * FRAME_HEIGHT * 2
 METADATA_FIELDS = (
     "sample_id",
     "class",
@@ -88,7 +90,7 @@ class DatasetManager:
         # 2) Discover PNG files on disk keyed by sample_id.
         png_sample_ids: dict[str, dict[str, str]] = {}
         png_pattern = re.compile(
-            r"^([a-z]+_\d{8}_\d{6}_\d{6}_\d{5})_(original|processed)_z[\dp]+\.png$"
+            r"^([a-z_]+_\d{8}_\d{6}_\d{6}_\d{5})_(original|processed)_z[\dp]+\.png$"
         )
         for class_name in CLASSES:
             class_pattern = re.compile(
@@ -100,9 +102,9 @@ class DatasetManager:
                     sample_id = match.group(1)
                     png_sample_ids[sample_id] = {
                         "class": class_name,
-                        "filename": (self.root / class_name / path.name).relative_to(
-                            self.root
-                        ).as_posix(),
+                        "filename": (self.root / class_name / path.name)
+                        .relative_to(self.root)
+                        .as_posix(),
                     }
                 else:
                     # Accept legacy filenames (no variant/zoom tag).
@@ -164,9 +166,7 @@ class DatasetManager:
         # 5) Rewrite metadata.csv with reconciled rows.
         if valid_csv or csv_rows:
             try:
-                with self.metadata_path.open(
-                    "w", newline="", encoding="utf-8"
-                ) as file:
+                with self.metadata_path.open("w", newline="", encoding="utf-8") as file:
                     writer = csv.DictWriter(file, fieldnames=METADATA_FIELDS)
                     writer.writeheader()
                     for row in valid_csv.values():
@@ -235,7 +235,9 @@ class DatasetManager:
                     "filename": destination.relative_to(self.root).as_posix(),
                     "zoom": f"{capture.zoom:.2f}",
                     "zoom_applied": variant == "processed" and capture.zoom != 1.0,
-                    "enhancement": "none" if variant == "original" else "CLAHE_L_1.5_8x8",
+                    "enhancement": (
+                        "none" if variant == "original" else "CLAHE_L_1.5_8x8"
+                    ),
                     "source_width": width,
                     "source_height": height,
                     "source_sha256": capture.source_sha256,
@@ -249,7 +251,10 @@ class DatasetManager:
             )
 
         try:
-            new_file = not self.metadata_path.exists() or self.metadata_path.stat().st_size == 0
+            new_file = (
+                not self.metadata_path.exists()
+                or self.metadata_path.stat().st_size == 0
+            )
             with self.metadata_path.open("a", newline="", encoding="utf-8") as file:
                 writer = csv.DictWriter(file, fieldnames=METADATA_FIELDS)
                 if new_file:
@@ -312,7 +317,9 @@ class CameraClient:
 
     def capture(self) -> np.ndarray | None:
         try:
-            response = self.session.get(f"{self.base_url}/capture", timeout=self.timeout)
+            response = self.session.get(
+                f"{self.base_url}/capture", timeout=self.timeout
+            )
             response.raise_for_status()
         except requests.RequestException as error:
             print(f"Error de red durante la captura: {error}")
@@ -339,13 +346,37 @@ def decode_bmp(data: bytes, source: str) -> np.ndarray | None:
     if image is None or image.size == 0:
         print(f"OpenCV no pudo decodificar el BMP de {source} ({len(data)} bytes).")
         return None
-    if image.shape[:2] != (120, 160):
+    if image.shape[:2] != (FRAME_HEIGHT, FRAME_WIDTH):
         print(
-            f"Frame invalido de {source}: se esperaba 160x120 y llego "
+            f"Frame invalido de {source}: se esperaba {FRAME_WIDTH}x{FRAME_HEIGHT} y llego "
             f"{image.shape[1]}x{image.shape[0]}."
         )
         return None
     return image
+
+
+def decode_rgb565(data: bytes, source: str) -> np.ndarray | None:
+    if len(data) != EXPECTED_RGB565_BYTES:
+        print(
+            f"Frame RGB565 invalido de {source}: "
+            f"se esperaban {EXPECTED_RGB565_BYTES} bytes "
+            f"y llegaron {len(data)}."
+        )
+        return None
+
+    pixels = np.frombuffer(data, dtype=np.dtype(">u2"))
+    pixels = pixels.reshape((FRAME_HEIGHT, FRAME_WIDTH))
+
+    red_5 = (pixels >> 11) & 0x1F
+    green_6 = (pixels >> 5) & 0x3F
+    blue_5 = pixels & 0x1F
+
+    red_8 = ((red_5 << 3) | (red_5 >> 2)).astype(np.uint8)
+    green_8 = ((green_6 << 2) | (green_6 >> 4)).astype(np.uint8)
+    blue_8 = ((blue_5 << 3) | (blue_5 >> 2)).astype(np.uint8)
+
+    # OpenCV trabaja internamente en BGR.
+    return np.dstack((blue_8, green_8, red_8))
 
 
 def digital_zoom(image: np.ndarray, zoom: float) -> np.ndarray:
@@ -373,14 +404,18 @@ def normalized_difference(first: np.ndarray, second: np.ndarray) -> float:
     second_gray = cv2.cvtColor(second, cv2.COLOR_BGR2GRAY)
     if first_gray.shape != second_gray.shape:
         second_gray = cv2.resize(
-            second_gray, (first_gray.shape[1], first_gray.shape[0]), interpolation=cv2.INTER_AREA
+            second_gray,
+            (first_gray.shape[1], first_gray.shape[0]),
+            interpolation=cv2.INTER_AREA,
         )
     return float(cv2.absdiff(first_gray, second_gray).mean() / 255.0)
 
 
 def add_preview_label(image: np.ndarray, lines: Iterable[str]) -> np.ndarray:
     scale = 3
-    preview = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+    preview = cv2.resize(
+        image, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST
+    )
     y = 22
     for line in lines:
         cv2.putText(
@@ -419,8 +454,12 @@ async def review_capture(capture: Capture, class_name: str, duplicate: bool) -> 
     cv2.imshow("Zoom + realce CLAHE", processed_preview)
 
     if duplicate:
-        print("Captura casi identica a la ultima guardada. O/P/B estan bloqueadas; use F para autorizar.")
-    print("Revision: [O] original  [P/A] procesada  [B] ambas  [D] descartar  [R] repetir  [F] forzar duplicado")
+        print(
+            "Captura casi identica a la ultima guardada. O/P/B estan bloqueadas; use F para autorizar."
+        )
+    print(
+        "Revision: [O] original  [P/A] procesada  [B] ambas  [D] descartar  [R] repetir  [F] forzar duplicado"
+    )
     duplicate_blocked = duplicate
     while True:
         key = cv2.waitKey(20) & 0xFF
@@ -433,7 +472,16 @@ async def review_capture(capture: Capture, class_name: str, duplicate: bool) -> 
             duplicate_blocked = False
             print("Guardado habilitado para esta captura. Elija O, P/A o B.")
             continue
-        if duplicate_blocked and key in (ord("o"), ord("O"), ord("p"), ord("P"), ord("a"), ord("A"), ord("b"), ord("B")):
+        if duplicate_blocked and key in (
+            ord("o"),
+            ord("O"),
+            ord("p"),
+            ord("P"),
+            ord("a"),
+            ord("A"),
+            ord("b"),
+            ord("B"),
+        ):
             print("Posible duplicado: presione F primero, o D/R.")
             continue
         if key in (ord("o"), ord("O")):
@@ -455,9 +503,18 @@ def parse_args() -> argparse.Namespace:
         default=Path(__file__).resolve().parent / "dataset",
         help="Carpeta raiz del dataset (por defecto: project/dataset)",
     )
-    parser.add_argument("--timeout", type=float, default=12.0, help="Timeout HTTP en segundos")
-    parser.add_argument("--fps", type=int, default=4, help="FPS solicitados al ESP32 (1-8)")
-    parser.add_argument("--ws-port", type=int, default=81, help="Puerto WebSocket del ESP32")
+    parser.add_argument(
+        "--timeout", type=float, default=12.0, help="Timeout HTTP en segundos"
+    )
+    parser.add_argument(
+        "--fps",
+        type=int,
+        default=2,
+        help="FPS solicitados al ESP32 (1-4)",
+    )
+    parser.add_argument(
+        "--ws-port", type=int, default=81, help="Puerto WebSocket del ESP32"
+    )
     parser.add_argument(
         "--duplicate-threshold",
         type=float,
@@ -480,13 +537,15 @@ async def run_stream(
         open_timeout=camera.timeout,
         ping_interval=20,
         ping_timeout=20,
-        max_size=128 * 1024,
+        max_size=512 * 1024,
         max_queue=2,
     ) as websocket:
         await websocket.send(f"FPS:{fps}")
         await websocket.send("START")
         print("Stream conectado.")
-        print("[1-4] clase  [Z] zoom  [C] capturar  [S] estado  [I] cambiar IP  [Q] salir")
+        print(
+            "[1-3] clase  [Z] zoom  [C] capturar  [S] estado  [I] cambiar IP  [Q] salir"
+        )
 
         receive_task = asyncio.create_task(websocket.recv())
         latest_original: np.ndarray | None = None
@@ -501,11 +560,13 @@ async def run_stream(
                     message = receive_task.result()
                     receive_task = asyncio.create_task(websocket.recv())
                     if isinstance(message, bytes):
-                        decoded = decode_bmp(message, "stream WebSocket")
+                        decoded = decode_rgb565(message, "stream WebSocket")
                         if decoded is not None:
                             latest_original = decoded
                             zoom = ZOOM_LEVELS[state.zoom_index]
-                            latest_processed = enhance_luminance(digital_zoom(decoded, zoom))
+                            latest_processed = enhance_luminance(
+                                digital_zoom(decoded, zoom)
+                            )
                             now = time.monotonic()
                             if previous_frame_at is not None:
                                 instantaneous = 1.0 / max(now - previous_frame_at, 1e-6)
@@ -520,8 +581,8 @@ async def run_stream(
                                 latest_original,
                                 (
                                     f"EN VIVO | clase: {class_name}",
-                                    f"Original 160x120 | {measured_fps:.1f} FPS",
-                                    "C capturar | 1-4 clase | Z zoom | Q salir",
+                                    f"Original {FRAME_WIDTH}x{FRAME_HEIGHT} | {measured_fps:.1f} FPS",
+                                    "C capturar | 1-3 clase | Z zoom | Q salir",
                                 ),
                             )
                             processed_preview = add_preview_label(
@@ -546,7 +607,7 @@ async def run_stream(
                 if key in (ord("s"), ord("S")):
                     await asyncio.to_thread(camera.status)
                     continue
-                if key in (ord("1"), ord("2"), ord("3"), ord("4")):
+                if key in (ord("1"), ord("2"), ord("3")):
                     state.class_index = int(chr(key)) - 1
                     print(f"Clase seleccionada: {CLASSES[state.class_index]}")
                     dataset.print_counts()
@@ -579,16 +640,25 @@ async def run_stream(
                     difference_from_previous=difference,
                 )
                 if difference is not None:
-                    print(f"Diferencia respecto de la ultima captura guardada: {difference:.4f}")
+                    print(
+                        f"Diferencia respecto de la ultima captura guardada: {difference:.4f}"
+                    )
 
-                action = await review_capture(capture, CLASSES[state.class_index], duplicate)
+                action = await review_capture(
+                    capture, CLASSES[state.class_index], duplicate
+                )
                 if action == "discard":
                     print("Captura descartada.")
                 elif action != "repeat":
-                    variants = ("original", "processed") if action == "both" else (action,)
+                    variants = (
+                        ("original", "processed") if action == "both" else (action,)
+                    )
                     try:
                         paths = dataset.save(
-                            capture, CLASSES[state.class_index], variants, camera.base_url
+                            capture,
+                            CLASSES[state.class_index],
+                            variants,
+                            camera.base_url,
                         )
                     except (OSError, csv.Error) as error:
                         print(f"No se pudo guardar la captura: {error}")
@@ -652,10 +722,10 @@ def main() -> int:
     if (
         args.timeout <= 0
         or not 0 <= args.duplicate_threshold <= 1
-        or not 1 <= args.fps <= 8
+        or not 1 <= args.fps <= 4
         or not 1 <= args.ws_port <= 65535
     ):
-        print("Revise: timeout > 0, umbral 0-1, FPS 1-8 y puerto 1-65535.")
+        print("Revise: timeout > 0, umbral 0-1, FPS 1-4 y puerto 1-65535.")
         return 2
     try:
         return asyncio.run(async_main(args))
