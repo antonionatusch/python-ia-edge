@@ -1,0 +1,25 @@
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Settings:
+    master_url: str
+    master_api_token: str
+    camera_url: str
+    backend_api_token: str
+    device_timeout_seconds: float
+
+    @classmethod
+    def from_environment(cls) -> "Settings":
+        return cls(
+            master_url=os.getenv("MASTER_URL", "http://192.168.0.10").rstrip("/"),
+            master_api_token=os.getenv("MASTER_API_TOKEN", "change-me"),
+            camera_url=os.getenv("CAMERA_URL", "http://192.168.0.11").rstrip("/"),
+            backend_api_token=os.getenv(
+                "BACKEND_API_TOKEN", "local-development-token"
+            ),
+            device_timeout_seconds=float(os.getenv("DEVICE_TIMEOUT_SECONDS", "5")),
+        )
