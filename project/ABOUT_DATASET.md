@@ -11,9 +11,8 @@ el estado del plato de un alimentador para mascotas.
 | Clase | Descripción |
 |---|---|
 | `empty` | Plato completamente vacío |
-| `half_full` | Plato con alimento a nivel medio |
-| `full` | Plato con alimento al máximo |
-| `obstructed` | Plato obstruido (objeto, suciedad, mascota) |
+| `food_available` | Plato con alimento visible y accesible |
+| `unknown` | Escena que no corresponde claramente a las clases anteriores |
 
 ## Períodos del día
 
@@ -32,10 +31,9 @@ del mismo período.
 | Clase | Mañana | Tarde | Noche | Total por clase |
 |---|---|---|---|---|
 | `empty` | 25 | 25 | 25 | **75** |
-| `half_full` | 25 | 25 | 25 | **75** |
-| `full` | 25 | 25 | 25 | **75** |
-| `obstructed` | 25 | 25 | 25 | **75** |
-| **Total por turno** | 100 | 100 | 100 | **300** |
+| `food_available` | 25 | 25 | 25 | **75** |
+| `unknown` | 25 | 25 | 25 | **75** |
+| **Total por turno** | 75 | 75 | 75 | **225** |
 
 ### Por qué 25 por sesión
 
@@ -72,28 +70,20 @@ del mismo período.
 
 | Clase | Mañana | Tarde | Noche | Total |
 |---|---|---|---|---|
-| `empty` | 0 | 17 | 0 | 17 |
-| `half_full` | 0 | 0 | 0 | 0 |
-| `full` | 0 | 0 | 0 | 0 |
-| `obstructed` | 0 | 0 | 0 | 0 |
+| `empty` | 25 | 25 | 14 | 64 |
+| `food_available` | 28 | 25 | 18 | 71 |
+| `unknown` | 25 | 0 | 40 | 65 |
 
-**Total:** 17 fotos (solo clase `empty`, solo turno tarde)
+**Total:** 200 fotos
 
 ## Plan de captura
 
-### Sesión 1 — Tarde (completar)
-- `empty`: 8 fotos adicionales
-- `half_full`: 25 fotos
-- `full`: 25 fotos
-- `obstructed`: 25 fotos
-
-### Sesión 2 — Mañana
-- 25 fotos por clase (100 total)
-
-### Sesión 3 — Noche (luz artificial)
-- 25 fotos por clase (100 total)
+### Pendiente
+- `empty`: 11 fotos en la noche
+- `food_available`: 7 fotos en la noche
+- `unknown`: 25 fotos en la tarde
 
 ### Meta final
 - 75 fotos por clase
-- 300 fotos totales
+- 225 fotos totales
 - 3 condiciones de iluminación por clase
