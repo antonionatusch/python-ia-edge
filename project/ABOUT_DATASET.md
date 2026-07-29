@@ -70,20 +70,16 @@ del mismo período.
 
 | Clase | Mañana | Tarde | Noche | Total |
 |---|---|---|---|---|
-| `empty` | 25 | 25 | 14 | 64 |
-| `food_available` | 28 | 25 | 18 | 71 |
-| `unknown` | 25 | 0 | 40 | 65 |
+| `empty` | 25 | 25 | 35 | **85** |
+| `food_available` | 28 | 33 | 42 | **103** |
+| `unknown` | 25 | 25 | 40 | **90** |
+| **Total por turno** | **78** | **83** | **117** | **278** |
 
-**Total:** 200 fotos
+**Total de fotos:** 278
 
-## Plan de captura
+### Estado de completion
 
-### Pendiente
-- `empty`: 11 fotos en la noche
-- `food_available`: 7 fotos en la noche
-- `unknown`: 25 fotos en la tarde
-
-### Meta final
-- 75 fotos por clase
-- 225 fotos totales
-- 3 condiciones de iluminación por clase
+- [x] `empty`: completa (85/75)
+- [x] `food_available`: completa (103/75)
+- [x] `unknown`: completa (90/75)
+- [x] Dataset listo para entrenamiento
