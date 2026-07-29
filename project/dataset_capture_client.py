@@ -236,7 +236,7 @@ class DatasetManager:
                     "zoom": f"{capture.zoom:.2f}",
                     "zoom_applied": variant == "processed" and capture.zoom != 1.0,
                     "enhancement": (
-                        "none" if variant == "original" else "CLAHE_L_1.5_8x8"
+                        "none" if variant == "original" else "MEDIAN_3x3"
                     ),
                     "source_width": width,
                     "source_height": height,
@@ -391,12 +391,8 @@ def digital_zoom(image: np.ndarray, zoom: float) -> np.ndarray:
     return cv2.resize(crop, (width, height), interpolation=cv2.INTER_CUBIC)
 
 
-def enhance_luminance(image: np.ndarray) -> np.ndarray:
-    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    luminance, channel_a, channel_b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8, 8))
-    enhanced = cv2.merge((clahe.apply(luminance), channel_a, channel_b))
-    return cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
+def denoise_image(image: np.ndarray) -> np.ndarray:
+    return cv2.medianBlur(image, 3)
 
 
 def normalized_difference(first: np.ndarray, second: np.ndarray) -> float:
@@ -448,10 +444,13 @@ async def review_capture(capture: Capture, class_name: str, duplicate: bool) -> 
     )
     processed_preview = add_preview_label(
         capture.processed,
-        (f"PROCESADA | zoom: {capture.zoom:.2f}x", "CLAHE suave en luminancia"),
+        (
+            f"PROCESADA | zoom: {capture.zoom:.2f}x",
+            "Filtro mediano 3x3",
+        ),
     )
     cv2.imshow("Original recibida", original_preview)
-    cv2.imshow("Zoom + realce CLAHE", processed_preview)
+    cv2.imshow("Zoom + filtro mediano", processed_preview)
 
     if duplicate:
         print(
@@ -564,7 +563,7 @@ async def run_stream(
                         if decoded is not None:
                             latest_original = decoded
                             zoom = ZOOM_LEVELS[state.zoom_index]
-                            latest_processed = enhance_luminance(
+                            latest_processed = denoise_image(
                                 digital_zoom(decoded, zoom)
                             )
                             now = time.monotonic()
@@ -589,11 +588,11 @@ async def run_stream(
                                 latest_processed,
                                 (
                                     f"EN VIVO PROCESADA | zoom: {zoom:.2f}x",
-                                    "CLAHE suave en luminancia",
+                                    "Filtro mediano 3x3",
                                 ),
                             )
                             cv2.imshow("Original recibida", original_preview)
-                            cv2.imshow("Zoom + realce CLAHE", processed_preview)
+                            cv2.imshow("Zoom + filtro mediano", processed_preview)
                     elif message.startswith("ERROR:"):
                         print(f"ESP32 WebSocket: {message}")
 
@@ -625,7 +624,7 @@ async def run_stream(
                 await websocket.send("PAUSE")
                 original = latest_original.copy()
                 zoom = ZOOM_LEVELS[state.zoom_index]
-                processed = enhance_luminance(digital_zoom(original, zoom))
+                processed = denoise_image(digital_zoom(original, zoom))
                 difference = (
                     None
                     if state.last_saved_original is None

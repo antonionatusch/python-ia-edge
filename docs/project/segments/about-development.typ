@@ -186,20 +186,32 @@
   la clase correspondiente y almacenar las muestras aceptadas
   dentro de la carpeta asignada a cada clase.
 
-  Para evaluar el efecto de un realce de imagen, se genera una
-  variante procesada mediante _Contrast Limited Adaptive
-  Histogram Equalization_ (CLAHE). El filtro se aplica únicamente
-  sobre el canal de luminancia del espacio de color LAB, utilizando
-  un límite de recorte (`clipLimit`) de 1,5 y una cuadrícula
-  de ecualización de 8×8 regiones.
+  Como etapa de preprocesamiento, se genera una variante de cada
+  captura mediante un filtro mediano con una ventana de 3×3
+  píxeles. Este filtro reemplaza el valor de cada píxel por la
+  mediana de su vecindad y permite reducir el ruido impulsivo o
+  _speckle_ observado en las imágenes RGB565, sin degradar de
+  manera significativa los contornos del plato y del alimento.
 
-  Al conservar sin modificación los canales cromáticos A y B,
-  el procesamiento busca incrementar el contraste local sin
-  alterar directamente la información de color. La imagen
-  original y la variante procesada corresponden a una misma
+  La elección de este filtro responde tanto a su capacidad para
+  reducir los defectos observados como a la posibilidad de reproducir
+  el mismo procesamiento dentro del ESP32-CAM. La mediana de una
+  ventana de 3×3 puede implementarse directamente en C o C++ sobre
+  los componentes de color de los píxeles RGB565, sin depender de
+  OpenCV ni transferir la imagen a otro dispositivo. Además, el
+  tamaño reducido de la ventana limita el suavizado de detalles y
+  mantiene un costo de memoria y cómputo adecuado para el sistema
+  embebido.
+
+  En el despliegue, el flujo se ejecuta íntegramente en el ESP32-CAM:
+  el dispositivo captura la imagen RGB565, aplica el filtro mediano,
+  la redimensiona a la resolución de entrada del modelo y ejecuta el
+  clasificador. De esta forma, el preprocesamiento utilizado al crear
+  el dataset también se aplica inmediatamente antes de la clasificación,
+  manteniendo consistencia entre el entrenamiento y la inferencia. La
+  imagen original y la variante procesada corresponden a una misma
   captura, por lo que no se contabilizan como observaciones
-  independientes al describir la cantidad de muestras del
-  dataset.
+  independientes al describir la cantidad de muestras del dataset.
 
   *Fase 3: Definición de estrategia de aprendizaje automático y entrenamiento del modelo.*
 
