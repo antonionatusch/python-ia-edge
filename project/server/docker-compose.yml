@@ -1,6 +1,8 @@
 services:
   pet-feeder:
-    build: .
+    build:
+      context: .
+      network: host
     network_mode: host
     env_file: .env
     restart: unless-stopped
