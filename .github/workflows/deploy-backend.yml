@@ -35,15 +35,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sync files to /opt/pet-feeder
+      - name: Validate environment
+        working-directory: /opt/pet-feeder
         run: |
-          rsync -av --delete \
+          if [ ! -f .env ]; then
+            echo "::error::Missing /opt/pet-feeder/.env — cannot deploy"
+            exit 1
+          fi
+          if [ ! -f secrets/firebase.json ]; then
+            echo "::error::Missing /opt/pet-feeder/secrets/firebase.json — cannot deploy"
+            exit 1
+          fi
+          grep -q 'FIREBASE_CREDENTIALS_HOST_PATH' .env || {
+            echo "::error::FIREBASE_CREDENTIALS_HOST_PATH not set in /opt/pet-feeder/.env"
+            exit 1
+          }
+
+      - name: Sync code to /opt/pet-feeder
+        run: |
+          rsync -av \
             project/server/app/ \
             project/server/Dockerfile \
-            project/server/requirements.txt \
             project/server/docker-compose.yml \
             project/server/.dockerignore \
             /opt/pet-feeder/
+          rsync -av project/server/requirements.txt /opt/pet-feeder/requirements.txt
 
       - name: Rebuild and restart
         working-directory: /opt/pet-feeder
