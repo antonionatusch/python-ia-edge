@@ -65,7 +65,7 @@ jobs:
       - name: Rebuild and restart
         working-directory: /opt/pet-feeder
         run: |
-          docker compose build --no-cache
+          docker compose build
           docker compose up -d
           docker compose logs --tail=20
 
