@@ -10,6 +10,7 @@ from starlette.websockets import WebSocketDisconnect
 from app.config import Settings
 from app.devices import CameraCapture, DeviceError
 from app.main import create_app
+from app.notification_devices import NotificationDeviceStore
 
 
 class FakeCameraWebSocket:
@@ -99,8 +100,15 @@ SETTINGS = Settings(
 AUTH_HEADERS = {"X-API-Key": "backend-secret"}
 
 
-def make_client(devices: FakeDeviceClient | None = None) -> TestClient:
-    app = create_app(SETTINGS, devices or FakeDeviceClient())
+def make_client(
+    devices: FakeDeviceClient | None = None,
+    notification_devices: NotificationDeviceStore | None = None,
+) -> TestClient:
+    app = create_app(
+        SETTINGS,
+        devices or FakeDeviceClient(),
+        notification_devices,
+    )
     return TestClient(app)
 
 
@@ -125,6 +133,54 @@ def test_changes_master_mode() -> None:
     )
     assert response.status_code == 200
     assert response.json() == {"mode": "automatic"}
+
+
+def test_notification_device_registration_requires_api_key(tmp_path) -> None:
+    store = NotificationDeviceStore(str(tmp_path / "notifications.sqlite3"))
+    response = make_client(notification_devices=store).post(
+        "/api/v1/notifications/devices",
+        json={
+            "installation_id": "installation-123",
+            "fcm_token": "fcm-token-value-with-enough-characters",
+            "platform": "android",
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_registers_and_updates_notification_device(tmp_path) -> None:
+    store = NotificationDeviceStore(str(tmp_path / "notifications.sqlite3"))
+    client = make_client(notification_devices=store)
+    payload = {
+        "installation_id": "installation-123",
+        "fcm_token": "first-fcm-token-value-with-enough-characters",
+        "platform": "android",
+        "device_name": "Samsung A35",
+    }
+
+    first = client.post(
+        "/api/v1/notifications/devices",
+        headers=AUTH_HEADERS,
+        json=payload,
+    )
+    payload["fcm_token"] = "rotated-fcm-token-value-with-enough-characters"
+    second = client.post(
+        "/api/v1/notifications/devices",
+        headers=AUTH_HEADERS,
+        json=payload,
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["installation_id"] == "installation-123"
+    assert "fcm_token" not in second.json()
+
+    status = client.get("/api/v1/notifications/status", headers=AUTH_HEADERS)
+    assert status.status_code == 200
+    assert status.json() == {
+        "firebase_configured": False,
+        "registered_devices": 1,
+    }
 
 
 def test_system_status_reports_powered_off_camera() -> None:

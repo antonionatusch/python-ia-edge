@@ -3,3 +3,7 @@
 __pycache__
 .pytest_cache
 .git
+data
+*.sqlite3
+*firebase-admin*.json
+*service-account*.json

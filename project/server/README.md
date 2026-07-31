@@ -12,6 +12,8 @@ retransmitir su stream de diagnostico.
 - Operacion atomica de captura seguida de inferencia sobre ese frame.
 - Puente WebSocket RGB565 con resultados de clasificacion periodicos.
 - Estado combinado, tolerando que la CAM este apagada por horario.
+- Registro persistente de dispositivos Android y tokens FCM renovables.
+- Inicializacion opcional de Firebase Admin mediante una cuenta de servicio.
 - Documentacion OpenAPI automatica en `/docs`.
 
 ## Instalacion
@@ -58,7 +60,36 @@ curl -X POST \
 curl -X POST \
   -H "X-API-Key: TOKEN_BACKEND" \
   http://SERVIDOR:8000/api/v1/camera/capture-classify
+
+curl -X POST \
+  -H "X-API-Key: TOKEN_BACKEND" \
+  -H "Content-Type: application/json" \
+  -d '{"installation_id":"instalacion-123","fcm_token":"TOKEN_FCM","platform":"android"}' \
+  http://SERVIDOR:8000/api/v1/notifications/devices
+
+curl -H "X-API-Key: TOKEN_BACKEND" \
+  http://SERVIDOR:8000/api/v1/notifications/status
 ```
+
+## Firebase y persistencia
+
+La cuenta de servicio de Firebase debe permanecer fuera del repositorio. En
+Docker Compose se monta como archivo de solo lectura y SQLite se conserva en el
+volumen `notification-data`.
+
+Variables requeridas en `.env` para el despliegue:
+
+```dotenv
+FIREBASE_CREDENTIALS_HOST_PATH=/opt/pet-feeder/secrets/firebase.json
+```
+
+Compose configura internamente:
+
+- `FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase.json`
+- `NOTIFICATION_DB_PATH=/data/notifications.sqlite3`
+
+Sin `FIREBASE_CREDENTIALS_PATH`, el backend puede iniciar y registrar tokens,
+pero no queda habilitado para enviar mensajes mediante Firebase Admin.
 
 ## Stream de diagnostico
 
@@ -106,7 +137,8 @@ la ESP32-CAM este encendida.
 
 ## Limites de esta etapa
 
-- No hay voto mayoritario, base de datos ni notificaciones.
+- Los dispositivos FCM ya se registran, pero aun no se envian notificaciones.
+- SQLite solo contiene dispositivos; faltan rondas, resultados y envios.
 - El coordinador de las cinco inferencias automaticas todavia no esta
   implementado.
 - El puente retransmite RGB565 sin convertirlo a un formato de video; Flutter

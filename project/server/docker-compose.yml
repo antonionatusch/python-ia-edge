@@ -5,5 +5,14 @@ services:
       network: host
     network_mode: host
     env_file: .env
+    environment:
+      NOTIFICATION_DB_PATH: /data/notifications.sqlite3
+      FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase.json
+    volumes:
+      - notification-data:/data
+      - ${FIREBASE_CREDENTIALS_HOST_PATH}:/run/secrets/firebase.json:ro
     restart: unless-stopped
     command: uvicorn app.main:app --host 0.0.0.0 --port 7890
+
+volumes:
+  notification-data:

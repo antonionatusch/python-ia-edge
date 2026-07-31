@@ -1,2 +1,7 @@
 __pycache__
 dataset
+server/.env
+server/data/
+server/*.sqlite3
+server/*firebase-admin*.json
+server/*service-account*.json

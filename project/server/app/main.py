@@ -13,7 +13,14 @@ from websockets.exceptions import WebSocketException
 
 from .config import Settings
 from .devices import CameraCapture, DeviceClient, DeviceError
-from .models import ModeRequest, RelayRequest
+from .firebase_service import initialize_firebase
+from .models import (
+    ModeRequest,
+    NotificationDeviceRequest,
+    NotificationDeviceResponse,
+    RelayRequest,
+)
+from .notification_devices import NotificationDeviceStore
 
 
 def _device_error_response(error: DeviceError) -> HTTPException:
@@ -40,6 +47,7 @@ def websocket_is_authorized(websocket: WebSocket, expected: str) -> bool:
 def create_app(
     settings: Settings | None = None,
     device_client: DeviceClient | None = None,
+    notification_devices: NotificationDeviceStore | None = None,
 ) -> FastAPI:
     resolved_settings = settings or Settings.from_environment()
     app = FastAPI(
@@ -49,10 +57,45 @@ def create_app(
     )
     app.state.settings = resolved_settings
     app.state.devices = device_client or DeviceClient(resolved_settings)
+    app.state.notification_devices = notification_devices or NotificationDeviceStore(
+        resolved_settings.notification_db_path
+    )
+    app.state.firebase = initialize_firebase(
+        resolved_settings.firebase_credentials_path
+    )
 
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.post(
+        "/api/v1/notifications/devices",
+        response_model=NotificationDeviceResponse,
+        dependencies=[Depends(require_api_key)],
+    )
+    async def register_notification_device(
+        device: NotificationDeviceRequest,
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(
+            app.state.notification_devices.register,
+            installation_id=device.installation_id,
+            fcm_token=device.fcm_token,
+            platform=device.platform,
+            device_name=device.device_name,
+        )
+
+    @app.get(
+        "/api/v1/notifications/status",
+        dependencies=[Depends(require_api_key)],
+    )
+    async def notification_status() -> dict[str, Any]:
+        registered_devices = await asyncio.to_thread(
+            app.state.notification_devices.count_enabled
+        )
+        return {
+            "firebase_configured": app.state.firebase is not None,
+            "registered_devices": registered_devices,
+        }
 
     @app.get("/api/v1/master/status", dependencies=[Depends(require_api_key)])
     async def master_status() -> dict[str, Any]:

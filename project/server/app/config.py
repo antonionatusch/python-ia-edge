@@ -13,6 +13,8 @@ class Settings:
     backend_api_token: str
     device_timeout_seconds: float
     debug_classification_interval_seconds: float
+    notification_db_path: str = "data/notifications.sqlite3"
+    firebase_credentials_path: str | None = None
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -30,4 +32,8 @@ class Settings:
             debug_classification_interval_seconds=float(
                 os.getenv("DEBUG_CLASSIFICATION_INTERVAL_SECONDS", "5")
             ),
+            notification_db_path=os.getenv(
+                "NOTIFICATION_DB_PATH", "data/notifications.sqlite3"
+            ),
+            firebase_credentials_path=os.getenv("FIREBASE_CREDENTIALS_PATH") or None,
         )
