@@ -60,6 +60,12 @@ class FirebaseNotificationSender:
                     messaging.Message(
                         notification=messaging.Notification(title=title, body=body),
                         data=data,
+                        android=messaging.AndroidConfig(
+                            priority="high",
+                            notification=messaging.AndroidNotification(
+                                sound="default",
+                            ),
+                        ),
                         token=device["fcm_token"],
                     ),
                     app=self.app,
