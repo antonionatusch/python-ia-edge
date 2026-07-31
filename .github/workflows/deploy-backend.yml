@@ -1,0 +1,59 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'project/server/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: project/server
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install pytest
+
+      - name: Run tests
+        working-directory: project/server
+        run: .venv/bin/python -m pytest -v
+
+  deploy:
+    needs: test
+    runs-on: [self-hosted, Linux, X64]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync files to /opt/pet-feeder
+        run: |
+          rsync -av --delete \
+            project/server/app/ \
+            project/server/Dockerfile \
+            project/server/requirements.txt \
+            project/server/docker-compose.yml \
+            project/server/.dockerignore \
+            /opt/pet-feeder/
+
+      - name: Rebuild and restart
+        working-directory: /opt/pet-feeder
+        run: |
+          docker compose build --no-cache
+          docker compose up -d
+          docker compose logs --tail=20
+
+      - name: Verify health
+        working-directory: /opt/pet-feeder
+        run: |
+          sleep 5
+          curl -sf http://localhost:7890/health || (docker compose logs && exit 1)

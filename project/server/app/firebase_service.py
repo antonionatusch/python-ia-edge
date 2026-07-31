@@ -63,6 +63,7 @@ class FirebaseNotificationSender:
                         android=messaging.AndroidConfig(
                             priority="high",
                             notification=messaging.AndroidNotification(
+                                channel_id="feeder_rounds",
                                 sound="default",
                             ),
                         ),
