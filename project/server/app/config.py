@@ -4,6 +4,13 @@ import os
 from dataclasses import dataclass
 
 
+def _environment_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     master_url: str
@@ -15,6 +22,12 @@ class Settings:
     debug_classification_interval_seconds: float
     notification_db_path: str = "data/notifications.sqlite3"
     firebase_credentials_path: str | None = None
+    round_scheduler_enabled: bool = True
+    round_timezone: str = "America/La_Paz"
+    round_sample_count: int = 5
+    round_sample_interval_seconds: float = 45
+    notification_debug_enabled: bool = True
+    notification_debug_delay_seconds: float = 5
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -36,4 +49,18 @@ class Settings:
                 "NOTIFICATION_DB_PATH", "data/notifications.sqlite3"
             ),
             firebase_credentials_path=os.getenv("FIREBASE_CREDENTIALS_PATH") or None,
+            round_scheduler_enabled=_environment_bool(
+                "ROUND_SCHEDULER_ENABLED", True
+            ),
+            round_timezone=os.getenv("ROUND_TIMEZONE", "America/La_Paz"),
+            round_sample_count=int(os.getenv("ROUND_SAMPLE_COUNT", "5")),
+            round_sample_interval_seconds=float(
+                os.getenv("ROUND_SAMPLE_INTERVAL_SECONDS", "45")
+            ),
+            notification_debug_enabled=_environment_bool(
+                "NOTIFICATION_DEBUG_ENABLED", True
+            ),
+            notification_debug_delay_seconds=float(
+                os.getenv("NOTIFICATION_DEBUG_DELAY_SECONDS", "5")
+            ),
         )

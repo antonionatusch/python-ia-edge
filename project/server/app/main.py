@@ -4,23 +4,30 @@ import asyncio
 import json
 import secrets
 import time
+from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, WebSocket
 from fastapi.websockets import WebSocketDisconnect
 from fastapi.responses import Response
 from websockets.exceptions import WebSocketException
 
 from .config import Settings
 from .devices import CameraCapture, DeviceClient, DeviceError
-from .firebase_service import initialize_firebase
+from .firebase_service import FirebaseNotificationSender, initialize_firebase
 from .models import (
+    DebugNotificationRequest,
     ModeRequest,
     NotificationDeviceRequest,
     NotificationDeviceResponse,
     RelayRequest,
 )
 from .notification_devices import NotificationDeviceStore
+from .rounds import RoundCoordinator
 
 
 def _device_error_response(error: DeviceError) -> HTTPException:
@@ -48,21 +55,74 @@ def create_app(
     settings: Settings | None = None,
     device_client: DeviceClient | None = None,
     notification_devices: NotificationDeviceStore | None = None,
+    round_coordinator: RoundCoordinator | None = None,
 ) -> FastAPI:
     resolved_settings = settings or Settings.from_environment()
-    app = FastAPI(
-        title="IA Edge Feeder API",
-        version="0.2.0",
-        description="Control del ESP32 maestro y diagnostico de la ESP32-CAM.",
-    )
-    app.state.settings = resolved_settings
-    app.state.devices = device_client or DeviceClient(resolved_settings)
-    app.state.notification_devices = notification_devices or NotificationDeviceStore(
+    resolved_devices = device_client or DeviceClient(resolved_settings)
+    resolved_store = notification_devices or NotificationDeviceStore(
         resolved_settings.notification_db_path
     )
-    app.state.firebase = initialize_firebase(
-        resolved_settings.firebase_credentials_path
+    firebase_app = initialize_firebase(resolved_settings.firebase_credentials_path)
+    notification_sender = FirebaseNotificationSender(firebase_app, resolved_store)
+    resolved_rounds = round_coordinator or RoundCoordinator(
+        resolved_settings,
+        resolved_devices,
+        resolved_store,
+        notification_sender,
     )
+
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        scheduler = None
+        recovery_task = None
+        if resolved_settings.round_scheduler_enabled:
+            scheduler = AsyncIOScheduler(timezone=resolved_settings.round_timezone)
+            scheduler.add_job(
+                resolved_rounds.run_scheduled_round,
+                CronTrigger(
+                    hour="8-22",
+                    minute=0,
+                    second=0,
+                    timezone=resolved_settings.round_timezone,
+                ),
+                id="automatic-feeding-rounds",
+                coalesce=True,
+                max_instances=1,
+                misfire_grace_time=300,
+                replace_existing=True,
+            )
+            scheduler.start()
+            now = datetime.now(ZoneInfo(resolved_settings.round_timezone))
+            if 8 <= now.hour <= 22 and now.minute < 2:
+                recovery_task = asyncio.create_task(
+                    resolved_rounds.run_scheduled_round(
+                        now.replace(minute=0, second=0, microsecond=0)
+                    )
+                )
+        application.state.scheduler = scheduler
+        try:
+            yield
+        finally:
+            if scheduler is not None:
+                scheduler.shutdown(wait=False)
+            if recovery_task is not None and not recovery_task.done():
+                recovery_task.cancel()
+                await asyncio.gather(recovery_task, return_exceptions=True)
+            await resolved_rounds.close()
+
+    app = FastAPI(
+        title="IA Edge Feeder API",
+        version="0.3.0",
+        description="Control, rondas automaticas y notificaciones del comedero.",
+        lifespan=lifespan,
+    )
+    app.state.settings = resolved_settings
+    app.state.devices = resolved_devices
+    app.state.notification_devices = resolved_store
+    app.state.firebase = firebase_app
+    app.state.notification_sender = notification_sender
+    app.state.rounds = resolved_rounds
+    app.state.scheduler = None
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -95,7 +155,51 @@ def create_app(
         return {
             "firebase_configured": app.state.firebase is not None,
             "registered_devices": registered_devices,
+            "scheduler_enabled": resolved_settings.round_scheduler_enabled,
+            "scheduler_running": bool(
+                app.state.scheduler is not None and app.state.scheduler.running
+            ),
+            "debug_enabled": resolved_settings.notification_debug_enabled,
+            "debug_delay_seconds": resolved_settings.notification_debug_delay_seconds,
         }
+
+    @app.post(
+        "/api/v1/notifications/debug",
+        dependencies=[Depends(require_api_key)],
+    )
+    async def schedule_debug_notification(
+        classification: DebugNotificationRequest,
+    ) -> dict[str, Any]:
+        if not resolved_settings.notification_debug_enabled:
+            return {"scheduled": False, "reason": "debug_notifications_disabled"}
+        if app.state.firebase is None:
+            return {"scheduled": False, "reason": "firebase_not_configured"}
+        registered_devices = await asyncio.to_thread(
+            app.state.notification_devices.count_enabled
+        )
+        if registered_devices == 0:
+            return {"scheduled": False, "reason": "no_registered_devices"}
+        return await app.state.rounds.schedule_debug_notification(
+            classification.model_dump()
+        )
+
+    @app.get("/api/v1/rounds", dependencies=[Depends(require_api_key)])
+    async def list_rounds(
+        limit: int = Query(default=20, ge=1, le=100),
+    ) -> dict[str, Any]:
+        rounds = await asyncio.to_thread(
+            app.state.notification_devices.list_rounds, limit
+        )
+        return {"items": rounds}
+
+    @app.get("/api/v1/rounds/{round_id}", dependencies=[Depends(require_api_key)])
+    async def get_round(round_id: int) -> dict[str, Any]:
+        round_record = await asyncio.to_thread(
+            app.state.notification_devices.get_round, round_id
+        )
+        if round_record is None:
+            raise HTTPException(status_code=404, detail="round_not_found")
+        return round_record
 
     @app.get("/api/v1/master/status", dependencies=[Depends(require_api_key)])
     async def master_status() -> dict[str, Any]:

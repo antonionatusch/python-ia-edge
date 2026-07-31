@@ -103,11 +103,13 @@ AUTH_HEADERS = {"X-API-Key": "backend-secret"}
 def make_client(
     devices: FakeDeviceClient | None = None,
     notification_devices: NotificationDeviceStore | None = None,
+    round_coordinator=None,
 ) -> TestClient:
     app = create_app(
         SETTINGS,
         devices or FakeDeviceClient(),
         notification_devices,
+        round_coordinator,
     )
     return TestClient(app)
 
@@ -180,6 +182,64 @@ def test_registers_and_updates_notification_device(tmp_path) -> None:
     assert status.json() == {
         "firebase_configured": False,
         "registered_devices": 1,
+        "scheduler_enabled": True,
+        "scheduler_running": False,
+        "debug_enabled": True,
+        "debug_delay_seconds": 5,
+    }
+
+
+def test_lists_rounds_and_returns_round_detail(tmp_path) -> None:
+    store = NotificationDeviceStore(str(tmp_path / "notifications.sqlite3"))
+    round_record = store.create_round(
+        scheduled_at="2026-07-31T08:00:00-04:00",
+        source="automatic",
+    )
+    store.add_classification(
+        round_id=round_record["id"],
+        sample_index=0,
+        result={
+            "predicted_class": "food_available",
+            "confidence": 0.9,
+            "frame_id": 7,
+        },
+    )
+    store.set_round_status(
+        round_record["id"],
+        "completed",
+        result="food_available",
+        confidence=0.9,
+    )
+    client = make_client(notification_devices=store)
+
+    listing = client.get("/api/v1/rounds?limit=5", headers=AUTH_HEADERS)
+    detail = client.get(
+        f"/api/v1/rounds/{round_record['id']}", headers=AUTH_HEADERS
+    )
+
+    assert listing.status_code == 200
+    assert listing.json()["items"][0]["result"] == "food_available"
+    assert listing.json()["items"][0]["valid_sample_count"] == 1
+    assert detail.status_code == 200
+    assert detail.json()["classifications"][0]["frame_id"] == "7"
+
+
+def test_debug_notification_requires_firebase_configuration(tmp_path) -> None:
+    store = NotificationDeviceStore(str(tmp_path / "notifications.sqlite3"))
+    response = make_client(notification_devices=store).post(
+        "/api/v1/notifications/debug",
+        headers=AUTH_HEADERS,
+        json={
+            "predicted_class": "empty",
+            "confidence": 0.8,
+            "frame_id": 5,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "scheduled": False,
+        "reason": "firebase_not_configured",
     }
 
 

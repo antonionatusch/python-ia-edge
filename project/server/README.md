@@ -14,6 +14,9 @@ retransmitir su stream de diagnostico.
 - Estado combinado, tolerando que la CAM este apagada por horario.
 - Registro persistente de dispositivos Android y tokens FCM renovables.
 - Inicializacion opcional de Firebase Admin mediante una cuenta de servicio.
+- Rondas automaticas de cinco muestras con voto mayoritario.
+- Historial de rondas, muestras y entregas FCM en SQLite.
+- Notificacion debug cinco segundos despues de una clasificacion manual.
 - Documentacion OpenAPI automatica en `/docs`.
 
 ## Instalacion
@@ -69,6 +72,9 @@ curl -X POST \
 
 curl -H "X-API-Key: TOKEN_BACKEND" \
   http://SERVIDOR:8000/api/v1/notifications/status
+
+curl -H "X-API-Key: TOKEN_BACKEND" \
+  "http://SERVIDOR:8000/api/v1/rounds?limit=10"
 ```
 
 ## Firebase y persistencia
@@ -90,6 +96,12 @@ Compose configura internamente:
 
 Sin `FIREBASE_CREDENTIALS_PATH`, el backend puede iniciar y registrar tokens,
 pero no queda habilitado para enviar mensajes mediante Firebase Admin.
+
+Las rondas automaticas se disparan a las `hh:00:00`, entre 08:00 y 22:00 en
+`America/La_Paz`. Cada ronda toma cinco muestras separadas por 45 segundos.
+Para probar FCM sin esperar el horario, mantener
+`NOTIFICATION_DEBUG_ENABLED=true`: Flutter programara una notificacion cinco
+segundos despues de cada clasificacion manual exitosa.
 
 ## Stream de diagnostico
 
@@ -137,10 +149,8 @@ la ESP32-CAM este encendida.
 
 ## Limites de esta etapa
 
-- Los dispositivos FCM ya se registran, pero aun no se envian notificaciones.
-- SQLite solo contiene dispositivos; faltan rondas, resultados y envios.
-- El coordinador de las cinco inferencias automaticas todavia no esta
-  implementado.
+- No hay preferencias de notificacion por dispositivo.
+- No hay endpoint para retirar una instalacion desde Flutter.
 - El puente retransmite RGB565 sin convertirlo a un formato de video; Flutter
   debera decodificar cada frame o el backend debera incorporar conversion.
 - El token compartido es suficiente para una LAN de desarrollo. La exposicion

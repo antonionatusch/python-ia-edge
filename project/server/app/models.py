@@ -32,3 +32,9 @@ class NotificationDeviceResponse(BaseModel):
     enabled: bool
     created_at: str
     updated_at: str
+
+
+class DebugNotificationRequest(BaseModel):
+    predicted_class: Literal["empty", "food_available", "unknown"]
+    confidence: float = Field(ge=0, le=1)
+    frame_id: str | int | None = None
