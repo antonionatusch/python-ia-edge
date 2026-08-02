@@ -21,7 +21,7 @@
       [], [], [], [], [],
     ),
     caption: "Tabla de materiales adquiridos para el hardware del sistema de monitoreo",
-    note: "Elaboración propia.",
+    note: "Elaboración propia. Los precios pueden variar según la electrónica donde se busque la pieza.",
   )
 
   *Fase 1: Diseño e implementación de componentes de hardware.*
