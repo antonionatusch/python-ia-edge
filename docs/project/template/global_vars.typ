@@ -4,4 +4,4 @@
 #let TECHLAB_LOGO = "/template/techlab-logo.png"
 #let EDGE_IMG = "/assets/img/icon.png"
 #let PROFESSOR_NAME = "Ing. Marcelo Enrique Barradas Mercado"
-#let PROJECT_SHORT_NAME = "Monitoreo inteligente para alimentos"
+#let PROJECT_SHORT_NAME = "Monitoreo inteligente para alimentador"

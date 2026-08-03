@@ -175,3 +175,33 @@ WokwiWelcome2026:
   date: 2026-07-09
   url:
     value: https://docs.wokwi.com/
+
+WhatIsTailscale2025:
+  type: web
+  title: 'What is Tailscale?'
+  author: Tailscale
+  publisher: Tailscale
+  language: en
+  date: 2025-09-30
+  url:
+    value: https://tailscale.com/docs/concepts/what-is-tailscale
+
+CastilloLacruzLeo2025:
+  type: web
+  title: 'Docker y dockerizar - qué significan estos términos?'
+  author: Castillo Lacruz, Leonardo J.
+  publisher: freeCodeCamp
+  language: es
+  date: 2025-04-11
+  url:
+    value: https://www.freecodecamp.org/espanol/news/dockerizando-una-aplicacion-node/
+
+RHQueEsDocker2026:
+  type: web
+  title: '¿Qué es Docker y cómo funciona? Ventajas de los contenedores Docker'
+  author: Red Hat
+  publisher: Red Hat
+  language: es
+  date: 2026-01-30
+  url:
+    value: https://www.redhat.com/es/topics/containers/what-is-docker

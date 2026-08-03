@@ -364,5 +364,34 @@
 
   *Fase 6: Despliegue del sistema de monitoreo.*
 
-  #lorem(40)
+  Se usó un servidor casero que viene
+  configurado previamente con Tailscale para desplegar
+  el backend ahí luego de colocar todo
+  el subsistema de hardware en una posición
+  estable.
+
+  Tailscale es una solución que implementa el
+  protocolo WireGuard para crear un túnel VPN
+  de tipo malla punto a punto que se utiliza para
+  VPNs empresariales, integración continua y
+  entrega continua, y computación de borde
+  (_edge computing_, según el término en inglés)
+  e internet de las cosas, entre otros. @WhatIsTailscale2025
+
+  Esto permite tener el servicio
+  de notificaciones siempre funcionando para
+  los dispositivos que estén dentro de la VPN,
+  además de que facilita el evitar exponer
+  las direcciones IP
+  de mis ESP32 que, si bien privadas, no tienen
+  por qué exponerse para el usuario.
+
+  Mediante un pipeline de CI/CD, la aplicación de Python
+  se _dockeriza_#footnote([Se le llama dockerización (verbo: _dockerizar_) al acto
+    de empaquetar una aplicación en un contenedor Docker
+    para que pueda ejecutarse de manera consistente en cualquier entorno. @CastilloLacruzLeo2025
+    @RHQueEsDocker2026
+  ]) y se despliega en el servidor casero,
+  y es el cliente Flutter que permite el control
+  mencionado anteriormente.
 ]
