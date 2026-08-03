@@ -266,7 +266,71 @@
 
   *Fase 3: Definición de estrategia de aprendizaje automático y entrenamiento del modelo.*
 
-  #lorem(40)
+  Para la estrategia de aprendizaje automático, se opta por
+  usar Transfer Learning, la cual
+  es una técnica de aprendizaje automático
+  (o machine learning) donde
+  un modelo que se desarrolla
+  para una tarea específica se reutiliza como el
+  punto de partida para otra tarea similar.
+
+  Se opta
+  por usar esta técnica ya que esto permite acelerar
+  el proceso de entrenamiento, ayuda a trabajar mejor
+  con datasets pequeños ya que el modelo conoce
+  patrones básicos de antemano, y suele ofrecer
+  una mejor precisión dependiendo del modelo
+  que se use.
+
+  Para entrenar el modelo, se usa Edge Impulse como
+  plataforma principal de desarrollo. Esta plataforma está
+  orientada a la creación de modelos de aprendizaje automático
+  para sistemas embebidos y
+  dispositivos con recursos limitados,
+  por lo que permite
+  organizar en un mismo entorno la carga del
+  dataset, el diseño
+  del flujo de procesamiento, el entrenamiento,
+  la evaluación y la exportación del modelo.
+
+  Dentro del proyecto se
+  configura un impulso de clasificación de
+  imágenes con una entrada
+  de 96×96 píxeles y tres clases:
+  `empty`, `food_available` y `unknown`.
+  Como bloque de aprendizaje
+  se utiliza Transfer Learning con MobileNetV1 96×96 0.25, una
+  arquitectura reducida pensada para dispositivos de borde.
+
+  Edge Impulse también permite
+  visualizar las características
+  extraídas, revisar la
+  matriz de confusión y evaluar el modelo
+  sobre un conjunto de
+  prueba separado. Aunque durante la validación
+  se obtiene una precisión
+  del 100 %, la prueba con imágenes no
+  utilizadas en el entrenamiento
+  alcanza una precisión general
+  del 86,44
+  %, mostrando que la
+  clase `unknown` es la más difícil
+  de reconocer de forma consistente.
+
+  Finalmente, la plataforma
+  permite cuantizar el modelo a `int8`
+  y estimar sus requerimientos
+  de memoria, almacenamiento y tiempo
+  de inferencia antes de
+  llevarlo al microcontrolador. También se
+  utiliza el compilador EON
+  y se exporta el proyecto como una
+  librería de Arduino,
+  incluyendo en un mismo paquete el
+  preprocesamiento, los pesos
+  de la red neuronal y el código
+  necesario para ejecutar la
+  clasificación en el dispositivo.
 
   *Fase 4: Exportación e importación del modelo en ESP32-CAM.*
 
