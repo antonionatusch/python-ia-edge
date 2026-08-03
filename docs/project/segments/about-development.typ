@@ -1,8 +1,12 @@
 #import "../utils/figures.typ": apa-figure
 
 #let system_pipeline = [
-  De forma estructural, se puede desglosar
-  el desarrollo del proyecto en las siguientes fases:
+  Antes de hablar del pipeline mismo del sistema,
+  es conveniente explicar el desarrollo
+  que tuvo lugar previo a explicar el pipeline
+  completo.
+
+  == Desarrollo del proyecto según sus distintas fases
 
   *Fase 0: Adquisición de materiales.*
 
