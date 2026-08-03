@@ -345,7 +345,22 @@
 
   *Fase 5: Desarrollo de los componentes de software.*
 
-  #lorem(40)
+  Se desarrolla el firmware para las placas ESP32
+  maestro y ESP32-CAM. Para el ESP32 maestro, su función
+  principal es orquestar el encendido y apagado del relé,
+  el cual a su vez enciende o apaga el ESP32-CAM y el
+  ventilador. Luego, se desarrolla el backend
+  que encapsula tanto la comunicación con el ESP32 maestro,
+  el ESP32-CAM, la lógica de negocios, y la gestión de
+  notificaciones hacia el cliente Flutter.
+
+  Luego, el cliente Flutter puede ver información de
+  diagnóstico de ambos ESP32, recibe las clasificaciones
+  según la lógica de negocio descrita en el pipeline,
+  controla el ESP32 maestro, y permite la visualización
+  en tiempo real de lo mostrado por el ESP32-CAM
+  (si está en modo manual encendido) así como la clasificación
+  del último fotograma capturado.
 
   *Fase 6: Despliegue del sistema de monitoreo.*
 
