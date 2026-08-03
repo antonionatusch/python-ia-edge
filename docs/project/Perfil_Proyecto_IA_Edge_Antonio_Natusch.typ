@@ -83,6 +83,7 @@ de alimento y detectar fallos de dispensación.
 #solution_method
 = Contenido del proyecto
 #project_content
+#pagebreak()
 = Desarrollo
 #about_development
 

@@ -11,17 +11,64 @@
   las necesidades de hardware del sistema:
 
   #apa-figure(
-    table(
-      columns: 5,
-      table.header([Componente], [Cantidad utilizada], [Especificación], [Uso en el sistema], [Precio de compra]),
-      [], [], [], [], [],
-      [], [], [], [], [],
-      [], [], [], [], [],
-      [], [], [], [], [],
-      [], [], [], [], [],
-    ),
+    {
+      show table.cell: set text(size: 10pt)
+      table(
+        columns: 5,
+        table.header(
+          [Componente], [Cantidad utilizada], [Especificaciones], [Uso en el sistema], [Precio unitario de compra]
+        ),
+        [ESP32 38Pin WiFi-Bluetooth],
+        [1 unidad],
+        [Conector tipo C, Conversor USB-Serial 2102, Módulo ESP32-WROOM-32],
+        [Unidad central de procesamiento de eventos, control de relé.],
+        [Bs. 100],
+
+        [ESP32-CAM GC2145],
+        [1 unidad],
+        [16 pines, 3.3/5 V, 520 KB SRAM + 4M PRAM],
+        [Captura de fotogramas, inferencia sobre imágenes de plato.],
+        [Bs. 150],
+
+        [Conector WAGO de 4 vías], [6 unidades], [-], [Conexión entre componentes.], [Bs. 15],
+
+        [Modulo Relay 1CH Canal 5VDC Optoacoplado],
+        [1 unidad],
+        [1 canal de salida, nivel de disparo en HIGH, relé de tensión de carga: 125VAC/250VAC
+
+          28VDC/30VDC],
+        [Activación de ventilador y ESP32-CAM.],
+        [Bs. 20],
+
+        [Ventilador DC5V],
+        [1 unidad],
+        [Fuente de alimentación: DC 5V, 30x30x10 mm],
+        [Refrigeración de ESP32-CAM.],
+        [Bs. 20],
+
+        [Cable AWG], [1 metro], [-], [Conexión entre los componentes del circuito.], [Bs. 2],
+
+        [Diodo rectificador 1N4007],
+        [1 unidad],
+        [Voltaje repetitiva inversa de pico: 1000 Volts, Capacitancia total \@ 4V, 1 MHz: 15 pF],
+        [Rectificación de corriente, protección contra polaridad inversa.],
+        [Bs. 0,50],
+
+        [Capacitor cerámico 100 $n"F"$], [1 unidad], [-], [Desacoplo y filtrado de ruido.], [Bs. 0,50],
+
+        [Capacitor electrolítico 100 $mu"F"$],
+        [1 unidad],
+        [-],
+        [Estabilización de alimentación ante variaciones de carga.],
+        [Bs. 1,50],
+
+        [Total], [], [], [], [Bs. $#(100 + 150 + 6 * 15 + 20 + 20 + 2 + 0.50 + 1.50)$],
+      )
+    },
     caption: "Tabla de materiales adquiridos para el hardware del sistema de monitoreo",
-    note: "Elaboración propia. Los precios pueden variar según la electrónica donde se busque la pieza.",
+    note: "Elaboración propia. Los precios pueden variar según la electrónica donde se busque la pieza.
+    Materiales que están en el circuito pero no listados aquí estaban disponibles previo a la
+    realización del proyecto, por lo cual no se toman en cuenta.",
   )
 
   *Fase 1: Diseño e implementación de componentes de hardware.*
