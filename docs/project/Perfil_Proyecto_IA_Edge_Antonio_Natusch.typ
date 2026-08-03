@@ -88,7 +88,7 @@ de alimento y detectar fallos de dispensación.
 == Contenido del proyecto
 #project_content
 #pagebreak()
-= Funcionamiento del sistema - Pipeline
+= Funcionamiento del sistema - Pipeline <pipeline>
 #system_pipeline
 
 #pagebreak()
