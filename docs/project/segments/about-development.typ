@@ -334,7 +334,14 @@
 
   *Fase 4: Exportación e importación del modelo en ESP32-CAM.*
 
-  #lorem(40)
+  Se importa la
+  librería descargada de Edge Impulse y se usa el código
+  provisto para embeber tanto la lógica de hardware y de
+  inferencia como la de negocio,
+  esta última estando establecida según
+  el fin del proyecto. Para mayor detalle, es
+  posible consultar el repositorio
+  de código hospedado en GitHub en el Anexo A. `// agregar anexos`
 
   *Fase 5: Desarrollo de los componentes de software.*
 
