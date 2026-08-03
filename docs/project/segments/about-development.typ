@@ -1,6 +1,6 @@
 #import "../utils/figures.typ": apa-figure
 
-#let about_development = [
+#let system_pipeline = [
   De forma estructural, se puede desglosar
   el desarrollo del proyecto en las siguientes fases:
 

@@ -2,8 +2,10 @@
 #import "segments/work-proposal.typ": *
 #import "segments/work-objective.typ": *
 #import "segments/solution-method.typ": *
+#import "segments/state-of-the-art.typ": *
 #import "segments/project-content.typ": *
 #import "segments/about-development.typ": *
+#import "segments/results-metrics.typ": *
 #import "segments/main-scenarios-screenshots.typ": *
 #import "segments/architecture-description.typ": *
 #import "segments/architecture-diagram.typ": *
@@ -79,13 +81,15 @@ de alimento y detectar fallos de dispensación.
 #pagebreak()
 = Objetivo del trabajo
 #work_objective
-= Método de solución
-#solution_method
-= Contenido del proyecto
+= Estado del arte
+#state_of_art
+= Metodología propuesta
+#methodology
+== Contenido del proyecto
 #project_content
 #pagebreak()
-= Desarrollo
-#about_development
+= Funcionamiento del sistema - Pipeline
+#system_pipeline
 
 #pagebreak()
 == Arquitectura del prototipo
@@ -101,6 +105,8 @@ de alimento y detectar fallos de dispensación.
 #pagebreak()
 == Fragmentos de código
 #code_snippets
+= Resultados o métricas de funcionamiento
+#results_metrics
 = Conclusiones
 #conclusions
 = Recomendaciones

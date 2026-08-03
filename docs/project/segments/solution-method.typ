@@ -1,4 +1,4 @@
-#let solution_method = [
+#let methodology = [
   El método de solución para el presente trabajo consiste
   en desarrollar el sistema de monitoreo, el cual incluye
   componentes de hardware tipo SoC (_system on
